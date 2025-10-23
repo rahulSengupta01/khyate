@@ -25,7 +25,13 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up')),
+      backgroundColor: const Color(0xFFFEFCF8),
+      appBar: AppBar(
+        title: const Text('Sign Up'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFF1A2332)),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -40,11 +46,19 @@ class _SignupScreenState extends State<SignupScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: signUp, child: const Text('Sign Up')),
+            ElevatedButton(
+              onPressed: signUp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC5A572),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: const Text('Sign Up', style: TextStyle(color: Color(0xFF1A2332))),
+            ),
             const SizedBox(height: 8),
             Text(message),
             TextButton(
-                onPressed: () => Navigator.pop(context), child: const Text('Back to Login'))
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Back to Login'))
           ],
         ),
       ),

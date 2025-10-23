@@ -16,8 +16,11 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFEFCF8),
       appBar: AppBar(
-        title: const Text('Home'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Home', style: TextStyle(color: Color(0xFF1A2332))),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

@@ -12,7 +12,20 @@
           "package_name": "com.example.khyate_b2b"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "264918662033-ghjnv5o80vqhcke252pj89b10dok9k12.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.khyate_b2b",
+            "certificate_hash": "ca1723d2aa80197e34a30b8fc69e9bc08b5c240b"
+          }
+        },
+        {
+          "client_id": "264918662033-iiqr5jp4jt7a3olkceaqgd434d3vlsja.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBnKfImTiZ5b0OMASLCGzlzr8FNGDNtnI8"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "264918662033-iiqr5jp4jt7a3olkceaqgd434d3vlsja.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "264918662033-l96flfornv0mg9r1s0v4fr4bog2ssn7f.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.khyateB2b"
+              }
+            }
+          ]
         }
       }
     }
