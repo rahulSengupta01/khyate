@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:khyate_b2b/screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
 
 void main() async {
@@ -29,7 +30,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'Khyate B2B',
-      home: LoginScreen(),
+      home: OnboardingScreen(),
+
     );
   }
 }
