@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class PackageService {
-  static const String baseUrl = 'http://localhost:5000/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 15.1 Create Package
   // Note: Backend model expects duration as enum ('daily', 'weekly', 'monthly') and numberOfClasses

@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class SubscriptionService {
-  static const String baseUrl = 'http://localhost:5000/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 14.1 Create Subscription
   Future<Map<String, dynamic>?> createSubscription({

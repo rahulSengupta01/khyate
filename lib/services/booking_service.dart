@@ -1,7 +1,8 @@
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class BookingService {
-  static const String baseUrl = 'http://localhost:5000/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 13.1 Create Manual Booking
   Future<Map<String, dynamic>?> createManualBooking({

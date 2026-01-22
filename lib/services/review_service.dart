@@ -1,7 +1,8 @@
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class ReviewService {
-  static const String baseUrl = 'http://localhost:5000/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 2.6 Create Subscription Rating Review
   Future<Map<String, dynamic>?> createSubscriptionReview({

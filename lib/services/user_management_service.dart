@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class UserManagementService {
-  static const String baseUrl = 'http://localhost:5000/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 2.1 Update User Status
   Future<Map<String, dynamic>?> updateUserStatus({

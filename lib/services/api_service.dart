@@ -3,9 +3,10 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:5000/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // Get stored JWT token
   static Future<String?> getToken() async {
@@ -199,7 +200,7 @@ class ApiService {
       print('Network error: ${e.toString()}');
       return {
         'success': false,
-        'error': 'Cannot connect to server. Please ensure the backend is running on http://localhost:5000. Error: ${e.message}',
+        'error': 'Cannot connect to server. Please ensure the backend is running on https://outbox.nablean.com. Error: ${e.message}',
       };
     } on Exception catch (e) {
       // Timeout and other exceptions
@@ -210,7 +211,7 @@ class ApiService {
           errorMsg.contains('Network is unreachable')) {
         return {
           'success': false,
-          'error': 'Cannot connect to server. Please ensure the backend server is running on http://localhost:5000',
+          'error': 'Cannot connect to server. Please ensure the backend server is running on https://outbox.nablean.com',
         };
       }
       return {
