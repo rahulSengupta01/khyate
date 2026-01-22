@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class UserProfileService {
-  static const String baseUrl = 'https://outbox.nablean.com/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // Get user profile by ID
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {

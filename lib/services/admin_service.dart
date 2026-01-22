@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class AdminService {
-  static const String baseUrl = 'https://obadmin.nablean.com/api/v1';
+  static const String baseUrl = AppConfig.adminBaseUrl;
   
   // 6.1 Create Promo Code
   Future<Map<String, dynamic>?> createPromoCode({

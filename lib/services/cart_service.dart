@@ -1,7 +1,8 @@
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class CartService {
-  static const String baseUrl = 'https://outbox.nablean.com/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 2.14 Calculate Cart Total
   Future<Map<String, dynamic>?> calculateCartTotal({

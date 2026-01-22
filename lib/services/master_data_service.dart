@@ -1,7 +1,8 @@
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class MasterDataService {
-  static const String baseUrl = 'https://outbox.nablean.com/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // Get all countries
   Future<List<dynamic>> getAllCountries() async {

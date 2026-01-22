@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class TrainerService {
-  static const String baseUrl = 'https://outbox.nablean.com/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 5.1 Create Trainer
   Future<Map<String, dynamic>?> createTrainer({

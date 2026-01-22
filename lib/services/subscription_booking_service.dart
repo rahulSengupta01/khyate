@@ -1,7 +1,8 @@
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class SubscriptionBookingService {
-  static const String baseUrl = 'https://outbox.nablean.com/api/v1';
+  static const String baseUrl = AppConfig.baseUrl;
   
   // 13.3 Create Subscription Booking
   Future<Map<String, dynamic>?> createSubscription({

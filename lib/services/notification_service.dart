@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'api_service.dart';
+import '../config/app_config.dart';
 
 class NotificationService {
+  static const String baseUrl = AppConfig.baseUrl;
   NotificationService._();
 
   static final FlutterLocalNotificationsPlugin _plugin =
@@ -166,7 +168,7 @@ class NotificationService {
   }) async {
     try {
       final response = await ApiService.put(
-        'https://outbox.nablean.com/api/v1/user/update-notification/$notificationId',
+        '$baseUrl/user/update-notification/$notificationId',
         {'isRead': isRead},
         requireAuth: true,
       );
@@ -183,7 +185,7 @@ class NotificationService {
   static Future<List<dynamic>> getAllNotifications() async {
     try {
       final response = await ApiService.get(
-        'https://outbox.nablean.com/api/v1/user/get-all-notification',
+        '$baseUrl/user/get-all-notification',
         requireAuth: true,
       );
       
