@@ -29,6 +29,7 @@ class _FitnessScreenState extends State<FitnessScreen> {
   String searchQuery = '';
   String? selectedTrainer;
   bool filterFutureDate = false;
+  DateTime? selectedDate;
 
   /// Session descriptions map
   static const Map<String, String> sessionDescriptions = {
@@ -248,7 +249,21 @@ class _FitnessScreenState extends State<FitnessScreen> {
     return list.where((card) {
       final matchesName = searchQuery.isEmpty || card.title.toLowerCase().contains(searchQuery.toLowerCase());
       final matchesTrainer = selectedTrainer == null || card.mentor == selectedTrainer;
-      final matchesDate = !filterFutureDate || DateTime.tryParse(card.date)?.isAfter(DateTime.now()) == true;
+      final DateTime? cardDate = DateTime.tryParse(card.date);
+      bool matchesDate = true;
+
+      // If a specific calendar date is selected, match exactly on that date
+      if (selectedDate != null && cardDate != null) {
+        matchesDate = cardDate.year == selectedDate!.year &&
+            cardDate.month == selectedDate!.month &&
+            cardDate.day == selectedDate!.day;
+      }
+
+      // If "Future Dates" filter is enabled and no specific date selected, only show future classes
+      if (selectedDate == null && filterFutureDate && cardDate != null) {
+        matchesDate = cardDate.isAfter(DateTime.now());
+      }
+
       return matchesName && matchesTrainer && matchesDate;
     }).toList();
   }
@@ -405,12 +420,42 @@ class _FitnessScreenState extends State<FitnessScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
+                      // Calendar date filter
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate ?? DateTime.now(),
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              selectedDate = DateTime(picked.year, picked.month, picked.day);
+                            });
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: accentColor, size: 20),
+                            const SizedBox(width: 4),
+                            Text(
+                              selectedDate == null
+                                  ? "Any date"
+                                  : "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}",
+                              style: GoogleFonts.inter(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Future dates toggle
                       Checkbox(
                         value: filterFutureDate,
-                        onChanged: (value) => setState(() => filterFutureDate = value!),
+                        onChanged: (value) => setState(() => filterFutureDate = value ?? false),
                       ),
                       Text(
-                        "Future Dates",
+                        "Future",
                         style: GoogleFonts.inter(),
                       ),
                     ],

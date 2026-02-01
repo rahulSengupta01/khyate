@@ -19,32 +19,49 @@ class AuthService {
     required String emiratesId,
     required int age,
     File? profileImage, // Changed from String? to File? for multipart upload
+    String? phoneNumber, // Backend may require phone_number
     String? uid, // Firebase UID if using social auth
   }) async {
     try {
-      final fields = {
-        'email': email,
-        'password': password,
-        'user_role': userRole.toString(), // Role ID as string
-        'first_name': firstName,
-        'last_name': lastName,
-        'country': country, // Country ID (ObjectId)
-        'city': city, // City ID (ObjectId)
-        'gender': gender, // Backend expects: "Male", "Female", "Others" (capitalized)
-        'address': address,
-        'emirates_id': emiratesId,
-        'age': age.toString(), // API expects string
-        if (uid != null && uid.isNotEmpty) 'uid': uid,
-      };
-      
-      final files = profileImage != null ? {'profile_image': profileImage} : null;
-      
-      final response = await ApiService.postMultipart(
-        '$baseUrl/auth/register',
-        fields,
-        files: files,
-        requireAuth: false, // Registration doesn't need auth
-      );
+      // Build payload: backend expects req.body (JSON); multipart leaves req.body {} in Express
+      final Map<String, dynamic> payload = {};
+      void setIfNonEmpty(String key, dynamic value) {
+        if (value == null) return;
+        final s = value.toString().trim();
+        if (s.isNotEmpty) payload[key] = s;
+      }
+      setIfNonEmpty('email', email);
+      setIfNonEmpty('password', password);
+      payload['user_role'] = userRole;
+      setIfNonEmpty('first_name', firstName);
+      setIfNonEmpty('last_name', lastName);
+      setIfNonEmpty('country', country);
+      setIfNonEmpty('city', city);
+      setIfNonEmpty('gender', gender);
+      setIfNonEmpty('address', address);
+      setIfNonEmpty('emirates_id', emiratesId);
+      payload['age'] = age;
+      setIfNonEmpty('phone_number', phoneNumber);
+      if (uid != null && uid.toString().trim().isNotEmpty) payload['uid'] = uid.toString().trim();
+
+      final Map<String, dynamic> response;
+      if (profileImage != null) {
+        // With file: use multipart (backend must parse multipart into body for this route)
+        final fields = payload.map((k, v) => MapEntry(k, v?.toString() ?? ''));
+        response = await ApiService.postMultipart(
+          '$baseUrl/auth/register',
+          fields,
+          files: {'profile_image': profileImage},
+          requireAuth: false,
+        );
+      } else {
+        // No file: send JSON so backend req.body is populated
+        response = await ApiService.post(
+          '$baseUrl/auth/register',
+          payload,
+          requireAuth: false,
+        );
+      }
       
       if (response['success'] == true) {
         // Save token if provided
@@ -63,7 +80,15 @@ class AuthService {
         }
         return data;
       } else {
-        throw Exception(response['error'] ?? 'Registration failed');
+        // Surface full backend error (e.g. "Missing required field: phone_number")
+        final err = response['error'] ?? response['message'];
+        final data = response['data'];
+        String msg = err?.toString() ?? 'Registration failed';
+        if (data is Map && (data['message'] != null || data['field'] != null)) {
+          final detail = data['message'] ?? data['field'];
+          if (detail != null) msg = '$msg. $detail';
+        }
+        throw Exception(msg);
       }
     } catch (e) {
       throw Exception('Registration error: ${e.toString()}');

@@ -6,36 +6,50 @@ class PackageService {
   static const String baseUrl = AppConfig.baseUrl;
   
   // 15.1 Create Package
-  // Note: Backend model expects duration as enum ('daily', 'weekly', 'monthly') and numberOfClasses
-  // API docs show duration as number, but backend model is the source of truth
+  // API Documentation: duration is a number (days), classesIncluded is the field name
   Future<Map<String, dynamic>?> createPackage({
     File? image,
     String? imageUrl,
     required String name,
-    required String description,
+    String? description,
+    List<String>? features,
     required double price,
-    required String duration, // Changed from int to String: 'daily', 'weekly', or 'monthly'
-    required int numberOfClasses, // Changed from classesIncluded to numberOfClasses to match backend model
+    required int duration, // Duration in days (number, not enum)
+    required int classesIncluded, // Field name from API: classesIncluded
     required bool isActive,
   }) async {
     try {
-      // Validate duration enum
-      final validDurations = ['daily', 'weekly', 'monthly'];
-      if (!validDurations.contains(duration.toLowerCase())) {
-        throw Exception('Duration must be one of: daily, weekly, monthly');
+      // Combine features into description if provided, or use description
+      String finalDescription = description ?? '';
+      if (features != null && features.isNotEmpty) {
+        final featuresText = features.join('\n• ');
+        finalDescription = finalDescription.isEmpty 
+            ? '• $featuresText' 
+            : '$finalDescription\n• $featuresText';
       }
       
-      final fields = {
+      final fields = <String, dynamic>{
         'name': name,
-        'description': description,
         'price': price.toString(),
-        'duration': duration.toLowerCase(), // Backend expects enum: 'daily', 'weekly', 'monthly'
-        'numberOfClasses': numberOfClasses.toString(), // Backend model field name
+        'duration': duration.toString(), // API expects number (days)
+        'classesIncluded': classesIncluded.toString(), // API field name: classesIncluded
         'isActive': isActive.toString(),
-        if (imageUrl != null && imageUrl.isNotEmpty) 'imageUrl': imageUrl,
       };
       
+      // Only add description if it's not empty
+      if (finalDescription.isNotEmpty) {
+        fields['description'] = finalDescription;
+      }
+      
+      // Only add imageUrl if provided
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        fields['imageUrl'] = imageUrl;
+      }
+      
       final files = image != null ? {'image': image} : null;
+      
+      print('Creating package with fields: $fields');
+      print('Image file: ${image?.path}');
       
       final response = await ApiService.postMultipart(
         '$baseUrl/package/create-package',
@@ -44,13 +58,25 @@ class PackageService {
         requireAuth: true,
       );
       
+      print('Package creation response: $response');
+      
       if (response['success'] == true) {
         return response['data'];
       } else {
-        throw Exception(response['error'] ?? 'Failed to create package');
+        final errorMsg = response['error'] ?? 
+                        response['message'] ?? 
+                        response['data']?['message'] ??
+                        'Failed to create package';
+        throw Exception(errorMsg);
       }
     } catch (e) {
-      throw Exception('Create package error: ${e.toString()}');
+      print('Package creation error: ${e.toString()}');
+      // Extract meaningful error message
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception:')) {
+        errorMessage = errorMessage.replaceFirst('Exception: ', '');
+      }
+      throw Exception('Failed to create package: $errorMessage');
     }
   }
   
@@ -98,19 +124,39 @@ class PackageService {
         if (search != null && search.isNotEmpty) 'search': search,
       };
       
+      print('Fetching packages with payload: $payload');
+      
       final response = await ApiService.post(
         '$baseUrl/package/get-all-packages',
         payload,
         requireAuth: false, // Public route
       );
       
+      print('Get packages response: $response');
+      
       if (response['success'] == true) {
-        return response['data'];
+        // Handle different response structures
+        final data = response['data'];
+        if (data != null) {
+          return data;
+        }
+        // If data is null, return empty structure
+        return {'packages': [], 'data': []};
       } else {
-        throw Exception(response['error'] ?? 'Failed to get packages');
+        final errorMsg = response['error'] ?? 
+                        response['message'] ?? 
+                        response['data']?['message'] ??
+                        'Failed to get packages';
+        throw Exception(errorMsg);
       }
     } catch (e) {
-      throw Exception('Get all packages error: ${e.toString()}');
+      print('Get packages error: ${e.toString()}');
+      // Extract meaningful error message
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception:')) {
+        errorMessage = errorMessage.replaceFirst('Exception: ', '');
+      }
+      throw Exception('Failed to load packages: $errorMessage');
     }
   }
   

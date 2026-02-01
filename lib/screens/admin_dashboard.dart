@@ -66,7 +66,7 @@ class _AdminDashboardState extends State<AdminDashboard>
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           tabs: const [
-            Tab(icon: Icon(Icons.card_membership, size: 20), text: "Memberships"),
+            Tab(icon: Icon(Icons.inventory, size: 20), text: "Packages"),
             Tab(icon: Icon(Icons.fitness_center, size: 20), text: "Fitness Cards"),
             Tab(icon: Icon(Icons.spa, size: 20), text: "Wellness Cards"),
             Tab(icon: Icon(Icons.person, size: 20), text: "Trainers"),
@@ -74,7 +74,6 @@ class _AdminDashboardState extends State<AdminDashboard>
             Tab(icon: Icon(Icons.local_offer, size: 20), text: "Promo Codes"),
             Tab(icon: Icon(Icons.article, size: 20), text: "Articles"),
             Tab(icon: Icon(Icons.subscriptions, size: 20), text: "Subscriptions"),
-            Tab(icon: Icon(Icons.inventory, size: 20), text: "Packages"),
             Tab(icon: Icon(Icons.calendar_today, size: 20), text: "Planner"),
             Tab(icon: Icon(Icons.people, size: 20), text: "Groomers"),
           ],
@@ -83,7 +82,7 @@ class _AdminDashboardState extends State<AdminDashboard>
       body: TabBarView(
         controller: _tabController,
         children: [
-          MembershipCarouselManager(),
+          PackageManager(),
           FitnessMembershipCardManager(),
           WellnessCardManager(),
           TrainerManager(),
@@ -91,7 +90,6 @@ class _AdminDashboardState extends State<AdminDashboard>
           PromoCodeManager(),
           ArticleManager(),
           SubscriptionManager(),
-          PackageManager(),
           PlannerDashboardScreen(),
           AvailableGroomersScreen(),
         ],
@@ -160,15 +158,33 @@ class _MembershipCarouselManagerState
       );
       if (mounted) {
         setState(() {
-          _packages = result?['packages'] ?? result?['data'] ?? [];
+          // Handle different response structures
+          if (result != null) {
+            _packages = result['packages'] ?? 
+                       result['data'] ?? 
+                       (result is List ? result : []);
+          } else {
+            _packages = [];
+          }
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        // Extract clean error message
+        String errorMsg = e.toString();
+        if (errorMsg.contains('Exception:')) {
+          errorMsg = errorMsg.replaceFirst('Exception: ', '');
+        }
+        if (errorMsg.contains('Failed to load packages:')) {
+          errorMsg = errorMsg.replaceFirst('Failed to load packages: ', '');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading packages: ${e.toString()}')),
+          SnackBar(
+            content: Text('Error loading packages: $errorMsg'),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
@@ -242,12 +258,31 @@ class _MembershipCarouselManagerState
       return;
     }
 
-    final numberOfClasses = int.tryParse(_numberOfClassesController.text);
-    if (numberOfClasses == null || numberOfClasses <= 0) {
+    final classesIncluded = int.tryParse(_numberOfClassesController.text);
+    if (classesIncluded == null || classesIncluded <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid number of classes')),
       );
       return;
+    }
+
+    // Convert duration enum to days
+    int durationDays;
+    switch (_selectedDuration?.toLowerCase()) {
+      case 'daily':
+        durationDays = 1;
+        break;
+      case 'weekly':
+        durationDays = 7;
+        break;
+      case 'monthly':
+        durationDays = 30;
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a valid duration')),
+        );
+        return;
     }
 
     if (!mounted) return;
@@ -259,8 +294,8 @@ class _MembershipCarouselManagerState
         name: _nameController.text,
         description: _descriptionController.text,
         price: price,
-        duration: _selectedDuration!,
-        numberOfClasses: numberOfClasses,
+        duration: durationDays, // Convert enum to days (number)
+        classesIncluded: classesIncluded, // Changed from numberOfClasses
         isActive: _isActive,
       );
       
@@ -283,8 +318,20 @@ class _MembershipCarouselManagerState
       }
     } catch (e) {
       if (mounted) {
+        // Extract clean error message
+        String errorMsg = e.toString();
+        if (errorMsg.contains('Exception:')) {
+          errorMsg = errorMsg.replaceFirst('Exception: ', '');
+        }
+        if (errorMsg.contains('Failed to create package:')) {
+          errorMsg = errorMsg.replaceFirst('Failed to create package: ', '');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating package: ${e.toString()}')),
+          SnackBar(
+            content: Text('Error creating package: $errorMsg'),
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {

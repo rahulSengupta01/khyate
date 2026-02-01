@@ -45,7 +45,7 @@ class _TrainerManagerState extends State<TrainerManager> {
     super.initState();
     _loadCountries();
     _loadServiceTypes();
-    // TODO: Load existing trainers
+    _loadTrainers();
   }
 
   Future<void> _loadCountries() async {
@@ -83,6 +83,21 @@ class _TrainerManagerState extends State<TrainerManager> {
       });
     } catch (e) {
       // Handle error silently
+    }
+  }
+
+  Future<void> _loadTrainers() async {
+    try {
+      final trainers = await _trainerService.getAllTrainers();
+      if (!mounted) return;
+      setState(() {
+        _trainers = trainers;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading trainers: ${e.toString()}')),
+      );
     }
   }
 
@@ -161,6 +176,7 @@ class _TrainerManagerState extends State<TrainerManager> {
       _selectedCountry = null;
       _selectedCity = null;
       _selectedServiceProviders = [];
+      await _loadTrainers();
       setState(() {});
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

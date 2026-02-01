@@ -88,6 +88,7 @@ class _SignupScreenState extends State<SignupScreen>
   bool _isLoading = false;
   bool _loadingCountries = false;
   bool _loadingCities = false;
+  bool _agreeTerms = false;
   String message = '';
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -170,6 +171,20 @@ class _SignupScreenState extends State<SignupScreen>
     super.dispose();
   }
 
+  /// Extracts a string ID from API response (handles _id as String or Map with $oid).
+  static String? _extractIdString(dynamic idValue) {
+    if (idValue == null) return null;
+    if (idValue is String && idValue.trim().isNotEmpty) return idValue.trim();
+    if (idValue is Map) {
+      final oid = idValue['\$oid'] ?? idValue['oid'];
+      if (oid != null && oid is String && oid.trim().isNotEmpty) return oid.trim();
+      final id = idValue['id'] ?? idValue['_id'];
+      if (id != null) return _extractIdString(id);
+    }
+    final s = idValue.toString().trim();
+    return s.isNotEmpty && !s.startsWith('Instance of') ? s : null;
+  }
+
   // Validate Emirates ID
   String? _validateEmiratesId(String? value) {
     if (value == null || value.isEmpty) {
@@ -250,6 +265,14 @@ class _SignupScreenState extends State<SignupScreen>
   Future<void> signUp() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Ensure user has agreed to terms and conditions
+    if (!_agreeTerms) {
+      setState(() {
+        message = 'Please agree to the Terms of Services and Privacy Policy to continue.';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       message = '';
@@ -302,7 +325,14 @@ class _SignupScreenState extends State<SignupScreen>
         }
       }
 
-      // Note: Phone number validation removed as it's not required in backend registration API
+      // Backend may require phone_number - validate before submit
+      if (phoneNumber.trim().isEmpty) {
+        setState(() {
+          message = 'Please enter your phone number';
+          _isLoading = false;
+        });
+        return;
+      }
 
       // Calculate age from birthday
       int age = 0;
@@ -333,11 +363,18 @@ class _SignupScreenState extends State<SignupScreen>
         return;
       }
 
-      // Get country ID and city ID
-      final countryId = selectedCountry!['_id'] ?? selectedCountry!['id'];
-      final cityId = selectedCity!['_id'] ?? selectedCity!['id'];
+      // Get country ID and city ID (safe extraction for API _id as String or {$oid: "..."})
+      final countryId = _extractIdString(selectedCountry!['_id'] ?? selectedCountry!['id']);
+      final cityId = _extractIdString(selectedCity!['_id'] ?? selectedCity!['id']);
       
-      if (cityId == null) {
+      if (countryId == null || countryId.isEmpty) {
+        setState(() {
+          message = 'Please select a valid country';
+          _isLoading = false;
+        });
+        return;
+      }
+      if (cityId == null || cityId.isEmpty) {
         setState(() {
           message = 'Please select a valid city';
           _isLoading = false;
@@ -348,21 +385,22 @@ class _SignupScreenState extends State<SignupScreen>
       // Remove hyphens from Emirates ID
       final emiratesIdClean = emiratesId.replaceAll('-', '').replaceAll(' ', '');
 
-      // Call API with all required fields matching backend API
+      // Call API with all required fields matching backend API (include phone_number if backend requires it)
       final user = await AuthService().signUp(
         email: emailController.text.trim(),
         password: passwordController.text,
         firstName: firstNameController.text.trim(),
         lastName: lastNameController.text.trim(),
         userRole: 3, // Customer role_id is 3
-        country: countryId.toString(), // Country ID (ObjectId)
-        city: cityId.toString(), // City ID (ObjectId)
-        gender: selectedGender!,
+        country: countryId,
+        city: cityId,
+        gender: selectedGender!, // Backend enum expects "Male", "Female", "Others"
         address: addressController.text.trim().isNotEmpty 
             ? addressController.text.trim() 
             : 'Not provided',
         emiratesId: emiratesIdClean,
         age: age,
+        phoneNumber: phoneNumber.trim().isEmpty ? null : phoneNumber.trim(),
       );
       
       if (user != null) {
@@ -386,6 +424,82 @@ class _SignupScreenState extends State<SignupScreen>
         _isLoading = false;
       });
     }
+  }
+
+  void _showTermsOfServicesDialog(BuildContext context, Color logoColor) {
+    const String content = '''1. Eligibility
+You must be at least 18 years old or have parental/guardian consent to use Outbox. By using our Services, you confirm that you meet these requirements.
+
+2. Services
+Outbox provides a platform for fitness training, workout plans, subscription packages, and trainer-customer interaction. We may update, enhance, or modify features at any time without prior notice.
+
+3. User Accounts
+You may need to create an account to access certain features. You are responsible for safeguarding your account credentials. You must notify us immediately if you suspect unauthorized use of your account.
+
+4. Subscriptions & Payments
+Subscription plans, packages, and class bookings are displayed in-app. Payments must be made through our approved payment gateways. All fees are non-refundable except as required by law or expressly stated in our refund policy.
+
+5. Cancellations & Refunds
+Users may cancel bookings or subscriptions based on the policies shown at the time of purchase. Refunds are subject to Outbox's approval and may take up to 7 business days to process.
+
+6. Health Disclaimer
+Outbox does not provide medical advice. Fitness activities involve risks. You agree to participate voluntarily and assume full responsibility for any injuries, health issues, or damages arising from your participation. Always consult a qualified healthcare professional before starting a new fitness program.''';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Terms of Services'),
+        content: SingleChildScrollView(
+          child: Text(
+            content,
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicyDialog(BuildContext context, Color logoColor) {
+    const String content = '''1. Information We Collect
+We collect information you provide (name, email, phone, address, Emirates ID, fitness goals) and usage data when you use our app and services.
+
+2. How We Use Your Information
+We use your information to provide and improve our services, process bookings and payments, send notifications, and comply with legal obligations.
+
+3. Data Sharing
+We do not sell your personal data. We may share data with service providers (payment, hosting) and when required by law.
+
+4. Data Security
+We use industry-standard measures to protect your data. You are responsible for keeping your account credentials secure.
+
+5. Your Rights
+You may access, correct, or delete your personal data through your account settings or by contacting us. You may withdraw consent where applicable.
+
+6. Contact
+For privacy-related questions, contact us through the app or our support channels.''';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Privacy Policy'),
+        content: SingleChildScrollView(
+          child: Text(
+            content,
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -919,7 +1033,7 @@ class _SignupScreenState extends State<SignupScreen>
                               color: Colors.grey.shade600,
                               fontSize: 16,
                             ),
-                            hintText: 'Enter Emirates ID.',
+                            hintText: 'Enter Emirates ID (e.g. 784-1990-1234567-1)',
                             hintStyle: TextStyle(color: Colors.grey.shade400),
                             prefixIcon: Icon(
                               Icons.badge_outlined,
@@ -1280,6 +1394,76 @@ class _SignupScreenState extends State<SignupScreen>
                         ),
                         const SizedBox(height: 24),
 
+                        // I agree to the Terms of Services and Privacy Policy (one sentence, links clickable)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Checkbox(
+                              value: _agreeTerms,
+                              onChanged: (value) {
+                                setState(() {
+                                  _agreeTerms = value ?? false;
+                                  if (_agreeTerms &&
+                                      message ==
+                                          'Please agree to the Terms of Services and Privacy Policy to continue.') {
+                                    message = '';
+                                  }
+                                });
+                              },
+                              activeColor: logoColor,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: 'I agree to the '),
+                                    WidgetSpan(
+                                      alignment: PlaceholderAlignment.baseline,
+                                      baseline: TextBaseline.alphabetic,
+                                      child: InkWell(
+                                        onTap: () => _showTermsOfServicesDialog(context, logoColor),
+                                        child: Text(
+                                          'Terms of Services',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: logoColor,
+                                            fontWeight: FontWeight.w600,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const TextSpan(text: ' and '),
+                                    WidgetSpan(
+                                      alignment: PlaceholderAlignment.baseline,
+                                      baseline: TextBaseline.alphabetic,
+                                      child: InkWell(
+                                        onTap: () => _showPrivacyPolicyDialog(context, logoColor),
+                                        child: Text(
+                                          'Privacy Policy',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: logoColor,
+                                            fontWeight: FontWeight.w600,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const TextSpan(text: '.'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
                         // Error message
                         if (message.isNotEmpty)
                           Container(
@@ -1299,11 +1483,15 @@ class _SignupScreenState extends State<SignupScreen>
                                     color: Colors.red.shade600, size: 20),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: Text(
-                                    message,
-                                    style: TextStyle(
-                                      color: Colors.red.shade700,
-                                      fontSize: 14,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Text(
+                                      message,
+                                      style: TextStyle(
+                                        color: Colors.red.shade700,
+                                        fontSize: 14,
+                                      ),
+                                      softWrap: false,
                                     ),
                                   ),
                                 ),
