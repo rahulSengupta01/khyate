@@ -16,6 +16,8 @@ class MembershipCarousel extends StatelessWidget {
   final bool filterFutureDate;
   final bool isDarkMode;
   final String? categoryFilter; // 'fitness' or 'wellness' to filter packages
+  /// When set, filter packages by this date (only items with a matching date are shown; items with no date are always shown).
+  final DateTime? selectedDate;
 
   const MembershipCarousel({
     super.key,
@@ -24,6 +26,7 @@ class MembershipCarousel extends StatelessWidget {
     this.filterFutureDate = false,
     this.isDarkMode = false,
     this.categoryFilter, // null means show all, 'fitness' shows only fitness, 'wellness' shows only wellness
+    this.selectedDate,
   });
 
   /// Fetches packages using API endpoint 15.3: POST /api/v1/package/get-all-packages
@@ -261,15 +264,27 @@ class MembershipCarousel extends StatelessWidget {
         
         print('MembershipCarousel: Received ${items.length} items from future');
 
-        // Apply filters
+        // Apply filters: name (partial, case-insensitive), trainer (partial when string, exact when dropdown), date
         final filteredItems = items.where((card) {
           final matchesName =
               searchQuery.isEmpty || card.title.toLowerCase().contains(searchQuery.toLowerCase());
-          final matchesTrainer =
-              selectedTrainer == null || card.mentor == selectedTrainer;
-          final matchesDate = !filterFutureDate ||
+          // Support both exact match (Fitness dropdown) and partial match (Wellness search)
+          final matchesTrainer = selectedTrainer == null ||
+              selectedTrainer!.isEmpty ||
+              card.mentor.toLowerCase().contains(selectedTrainer!.toLowerCase());
+          // Future-date filter: when enabled, only show items with future date
+          bool matchesDate = !filterFutureDate ||
               (card.date.isNotEmpty &&
                   DateTime.tryParse(card.date)?.isAfter(DateTime.now()) == true);
+          // Calendar date filter: when selectedDate is set, filter by that date; items with no date are still shown
+          if (selectedDate != null && card.date.isNotEmpty) {
+            final cardDate = DateTime.tryParse(card.date);
+            matchesDate = matchesDate &&
+                (cardDate != null &&
+                    cardDate.year == selectedDate!.year &&
+                    cardDate.month == selectedDate!.month &&
+                    cardDate.day == selectedDate!.day);
+          }
           return matchesName && matchesTrainer && matchesDate;
         }).toList();
         

@@ -12,21 +12,19 @@ class _PackageManagerState extends State<PackageManager> {
   final _packageService = PackageService();
   
   final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
-  final _numberOfClassesController = TextEditingController(); // Changed from _classesIncludedController
+  final _numberOfClassesController = TextEditingController();
+  final _durationController = TextEditingController(); // Duration in days (number)
   final _searchController = TextEditingController();
   
-  String? _selectedDuration; // Changed from TextEditingController to dropdown value
   File? _selectedImage;
-  bool _isActive = true;
   List<dynamic> _packages = [];
   bool _isLoading = false;
   int _page = 1;
   final int _limit = 10;
   
-  // Duration options matching backend enum
-  final List<String> _durationOptions = ['daily', 'weekly', 'monthly'];
+  // Features list for the package
+  final List<TextEditingController> _featureControllers = [TextEditingController()];
 
   @override
   void initState() {
@@ -45,38 +43,88 @@ class _PackageManagerState extends State<PackageManager> {
       );
       if (mounted) {
         setState(() {
-          _packages = result?['packages'] ?? result?['data'] ?? [];
+          // Handle different response structures
+          if (result != null) {
+            _packages = result['packages'] ?? 
+                       result['data'] ?? 
+                       (result is List ? result : []);
+          } else {
+            _packages = [];
+          }
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        // Extract clean error message
+        String errorMsg = e.toString();
+        if (errorMsg.contains('Exception:')) {
+          errorMsg = errorMsg.replaceFirst('Exception: ', '');
+        }
+        if (errorMsg.contains('Failed to load packages:')) {
+          errorMsg = errorMsg.replaceFirst('Failed to load packages: ', '');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading packages: ${e.toString()}')),
+          SnackBar(
+            content: Text('Error loading packages: $errorMsg'),
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
-  }
 
   Future<void> _createPackage() async {
+    // Validate required fields
     if (_nameController.text.isEmpty ||
-        _descriptionController.text.isEmpty ||
         _priceController.text.isEmpty ||
-        _selectedDuration == null ||
-        _numberOfClassesController.text.isEmpty) {
+        _durationController.text.isEmpty ||
+        _numberOfClassesController.text.isEmpty ||
+        _selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all required fields')),
+      );
+      return;
+    }
+
+    // Validate duration is a valid number
+    final duration = int.tryParse(_durationController.text);
+    if (duration == null || duration <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid duration in days')),
+      );
+      return;
+    }
+
+    // Validate price
+    final price = double.tryParse(_priceController.text);
+    if (price == null || price <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid price')),
+      );
+      return;
+    }
+
+    // Validate number of classes
+    final classesIncluded = int.tryParse(_numberOfClassesController.text);
+    if (classesIncluded == null || classesIncluded <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid number of classes')),
+      );
+      return;
+    }
+
+    // Validate features
+    final features = _featureControllers
+        .map((controller) => controller.text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+    
+    if (features.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one feature')),
       );
       return;
     }
@@ -87,11 +135,11 @@ class _PackageManagerState extends State<PackageManager> {
       await _packageService.createPackage(
         image: _selectedImage,
         name: _nameController.text,
-        description: _descriptionController.text,
-        price: double.parse(_priceController.text),
-        duration: _selectedDuration!, // Use selected duration enum value
-        numberOfClasses: int.parse(_numberOfClassesController.text), // Changed from classesIncluded
-        isActive: _isActive,
+        features: features,
+        price: price,
+        duration: duration, // Duration in days (number)
+        classesIncluded: classesIncluded, // API field name: classesIncluded
+        isActive: true,
       );
       
       if (mounted) {
@@ -99,20 +147,36 @@ class _PackageManagerState extends State<PackageManager> {
           const SnackBar(content: Text('Package created successfully')),
         );
         
+        // Reset form
         _nameController.clear();
-        _descriptionController.clear();
         _priceController.clear();
         _numberOfClassesController.clear();
+        _durationController.clear();
+        _featureControllers.forEach((controller) => controller.dispose());
+        _featureControllers.clear();
+        _featureControllers.add(TextEditingController());
         setState(() {
           _selectedImage = null;
-          _selectedDuration = null;
         });
         _loadPackages();
+        Navigator.pop(context); // Close dialog
       }
     } catch (e) {
       if (mounted) {
+        // Extract clean error message
+        String errorMsg = e.toString();
+        if (errorMsg.contains('Exception:')) {
+          errorMsg = errorMsg.replaceFirst('Exception: ', '');
+        }
+        if (errorMsg.contains('Failed to create package:')) {
+          errorMsg = errorMsg.replaceFirst('Failed to create package: ', '');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating package: ${e.toString()}')),
+          SnackBar(
+            content: Text('Error creating package: $errorMsg'),
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -120,6 +184,301 @@ class _PackageManagerState extends State<PackageManager> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _resetForm() {
+    _nameController.clear();
+    _priceController.clear();
+    _numberOfClassesController.clear();
+    _durationController.clear();
+    for (var controller in _featureControllers) {
+      controller.dispose();
+    }
+    _featureControllers.clear();
+    _featureControllers.add(TextEditingController());
+    setState(() {
+      _selectedImage = null;
+    });
+  }
+
+  void _showCreateDialog() {
+    _resetForm();
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with title and close button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Create Membership',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _resetForm();
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Upload Image Section
+                    const Text(
+                      'Upload Image *',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picker = ImagePicker();
+                        final pickedFile = await picker.pickImage(
+                          source: ImageSource.gallery,
+                        );
+                        if (pickedFile != null) {
+                          setDialogState(() {
+                            _selectedImage = File(pickedFile.path);
+                          });
+                        }
+                      },
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: _selectedImage != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(
+                                  _selectedImage!,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final picker = ImagePicker();
+                                      final pickedFile = await picker.pickImage(
+                                        source: ImageSource.gallery,
+                                      );
+                                      if (pickedFile != null) {
+                                        setDialogState(() {
+                                          _selectedImage = File(pickedFile.path);
+                                        });
+                                      }
+                                    },
+                                    icon: const Icon(Icons.upload_file),
+                                    label: const Text('Choose File'),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'No file chosen',
+                                    style: TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Package Name
+                    const Text(
+                      'Package Name *',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter package name',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Price, No. of Classes, Duration in horizontal layout
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Price *',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _priceController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter price',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'No. of Classes *',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _numberOfClassesController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter number of classes',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Duration (Days) *',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 8),
+                              TextField(
+                                controller: _durationController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter duration in days',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Features Section
+                    const Text(
+                      'Features *',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    ...List.generate(_featureControllers.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _featureControllers[index],
+                                decoration: InputDecoration(
+                                  hintText: 'Feature ${index + 1}',
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            if (index == _featureControllers.length - 1)
+                              IconButton(
+                                icon: const Icon(Icons.add_circle, color: Colors.teal),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    _featureControllers.add(TextEditingController());
+                                  });
+                                },
+                              ),
+                            if (_featureControllers.length > 1)
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    _featureControllers[index].dispose();
+                                    _featureControllers.removeAt(index);
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 32),
+                    
+                    // Action Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            _resetForm();
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 12,
+                            ),
+                            side: const BorderSide(color: Colors.teal),
+                          ),
+                          child: const Text('Close'),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _createPackage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text('Submit'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _deletePackage(Map<String, dynamic> package) async {
@@ -281,109 +640,24 @@ class _PackageManagerState extends State<PackageManager> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Create Package Button
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Create Package',
+                    'Membership Packages',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: _selectedImage != null
-                          ? Image.file(_selectedImage!, fit: BoxFit.cover)
-                          : const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_photo_alternate, size: 48),
-                                SizedBox(height: 8),
-                                Text('Tap to select image'),
-                              ],
-                            ),
+                  ElevatedButton.icon(
+                    onPressed: _showCreateDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Membership'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name *',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description *',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Price *',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  // Duration Dropdown (enum: daily, weekly, monthly)
-                  DropdownButtonFormField<String>(
-                    value: _selectedDuration,
-                    decoration: const InputDecoration(
-                      labelText: 'Duration *',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _durationOptions.map((duration) {
-                      return DropdownMenuItem<String>(
-                        value: duration,
-                        child: Text(duration.toUpperCase()),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedDuration = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _numberOfClassesController,
-                    decoration: const InputDecoration(
-                      labelText: 'Number of Classes *',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  CheckboxListTile(
-                    title: const Text('Is Active'),
-                    value: _isActive,
-                    onChanged: (value) {
-                      setState(() {
-                        _isActive = value ?? true;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _createPackage,
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Create Package'),
                   ),
                 ],
               ),
@@ -457,10 +731,13 @@ class _PackageManagerState extends State<PackageManager> {
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
     _priceController.dispose();
     _numberOfClassesController.dispose();
+    _durationController.dispose();
     _searchController.dispose();
+    for (var controller in _featureControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 }

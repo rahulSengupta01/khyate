@@ -35,6 +35,9 @@ class WellnessScreen extends StatefulWidget {
 class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObserver {
   int _refreshKey = 0; // Key to force stream refresh
   bool _hasInitialLoad = false;
+  String _searchQuery = '';
+  String _trainerQuery = '';
+  DateTime? _selectedDate;
   
   void _refreshData() {
     if (mounted) {
@@ -288,7 +291,6 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
   };
 
   @override
-  @override
   Widget build(BuildContext context) {
     // Brand Colors - Wellness (Brown/Gold: #AD8654)
     final Color scaffoldBackground =
@@ -420,20 +422,108 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
 
             const SizedBox(height: 36),
 
+            /// SEARCH & FILTERS (by program/class name, trainer, and date)
+            Container(
+              decoration: BoxDecoration(
+                color: widget.isDarkMode ? Colors.grey[850] : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          onChanged: (value) => setState(() => _searchQuery = value),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: "Search by program/class name",
+                            hintStyle: GoogleFonts.inter(
+                              color: widget.isDarkMode ? Colors.white54 : Colors.grey,
+                            ),
+                          ),
+                          style: GoogleFonts.inter(
+                            color: widget.isDarkMode ? Colors.white : const Color(0xFF353535),
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.search, color: accentColor),
+                    ],
+                  ),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          onChanged: (value) => setState(() => _trainerQuery = value),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: "Search by trainer name",
+                            hintStyle: GoogleFonts.inter(
+                              color: widget.isDarkMode ? Colors.white54 : Colors.grey,
+                            ),
+                          ),
+                          style: GoogleFonts.inter(
+                            color: widget.isDarkMode ? Colors.white : const Color(0xFF353535),
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate ?? DateTime.now(),
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              _selectedDate = DateTime(picked.year, picked.month, picked.day);
+                            });
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: accentColor, size: 20),
+                            const SizedBox(width: 4),
+                            Text(
+                              _selectedDate == null
+                                  ? "Any date"
+                                  : "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}",
+                              style: GoogleFonts.inter(
+                                color: widget.isDarkMode ? Colors.white : const Color(0xFF353535),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
             /// ----------------------------------------
-            /// ICON GRID ONLY (NO SEARCH / NO LOCATION)
+            /// TOP WELLNESS SESSIONS (brand color #AD8654)
             /// ----------------------------------------
             FitnessSessionsGrid(
               sessions: sessions,
               isDarkMode: widget.isDarkMode,
+              sectionTitle: 'Top Wellness Sessions',
+              accentColor: accentColor, // #AD8654
             ),
 
             const SizedBox(height: 28),
 
-            /// TODAY'S CLASSES SECTION
+            /// TODAY'S CLASSES SECTION (filtered by date and search when set)
             TodaysClassesList(
               isDarkMode: widget.isDarkMode,
-              categoryFilter: 'wellness', // Only show wellness classes
+              categoryFilter: 'wellness',
+              selectedDate: _selectedDate,
+              searchQuery: _searchQuery,
+              trainerQuery: _trainerQuery,
             ),
 
             const SizedBox(height: 32),
@@ -474,11 +564,34 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
                 final allMemberships = snapshot.data!;
                 NotificationService.scheduleUpcomingSessions(allMemberships);
 
+                // Apply client-side filters: program/class name, trainer name, and selected date
+                final filtered = allMemberships.where((card) {
+                  final matchesName = _searchQuery.isEmpty ||
+                      card.title.toLowerCase().contains(_searchQuery.toLowerCase());
+                  final matchesTrainer = _trainerQuery.isEmpty ||
+                      card.mentor.toLowerCase().contains(_trainerQuery.toLowerCase());
+
+                  DateTime? cardDate;
+                  try {
+                    cardDate = DateTime.tryParse(card.date);
+                  } catch (_) {
+                    cardDate = null;
+                  }
+                  bool matchesDate = true;
+                  if (_selectedDate != null && cardDate != null) {
+                    matchesDate = cardDate.year == _selectedDate!.year &&
+                        cardDate.month == _selectedDate!.month &&
+                        cardDate.day == _selectedDate!.day;
+                  }
+
+                  return matchesName && matchesTrainer && matchesDate;
+                }).toList();
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
-                    children: allMemberships
+                    children: filtered
                         .map(
                           (card) => MembershipCard(
                             data: card,
@@ -495,13 +608,14 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
 
             const SizedBox(height: 40),
 
-            /// FIND YOUR NEW LATEST PACKAGES SECTION
+            /// FIND YOUR NEW LATEST PACKAGES SECTION (filtered by date and search)
             MembershipCarousel(
-              searchQuery: '',
-              selectedTrainer: null,
+              searchQuery: _searchQuery,
+              selectedTrainer: _trainerQuery.isEmpty ? null : _trainerQuery,
               filterFutureDate: false,
               isDarkMode: widget.isDarkMode,
-              categoryFilter: 'wellness', // Only show wellness packages
+              categoryFilter: 'wellness',
+              selectedDate: _selectedDate,
             ),
 
             const SizedBox(height: 32),
