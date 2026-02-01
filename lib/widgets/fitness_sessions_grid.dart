@@ -10,20 +10,32 @@ class FitnessSession {
 class FitnessSessionsGrid extends StatelessWidget {
   final List<FitnessSession> sessions;
   final bool isDarkMode;
+  /// Override section title (e.g. "Top Wellness Sessions" on Wellness page).
+  final String? sectionTitle;
+  /// When set, use this as brand accent for icon circle gradient and icon color (e.g. #AD8654 for Wellness).
+  final Color? accentColor;
 
   const FitnessSessionsGrid({
     super.key,
     required this.sessions,
     required this.isDarkMode,
+    this.sectionTitle,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final Color textColor = isDarkMode ? Colors.white : const Color(0xFF1A2332);
-    // Use colors from your cultural minimalism palette for gradient
-    final Color iconBgStart = isDarkMode ? const Color(0xFF2D7D7A) : const Color(0xFF21B998);
-    final Color iconBgEnd = isDarkMode ? const Color(0xFFC5A572) : const Color(0xFF0097B2);
-    final Color iconColor = isDarkMode ? Colors.white70 : const Color(0xFF1A2332);
+    // Use accentColor for Wellness (#AD8654) with horizontal gradient to darker shade; otherwise Fitness teal/green
+    final Color iconBgStart = accentColor != null
+        ? accentColor!
+        : (isDarkMode ? const Color(0xFF2D7D7A) : const Color(0xFF21B998));
+    final Color iconBgEnd = accentColor != null
+        ? Color.lerp(accentColor!, Colors.black, 0.35) ?? accentColor!
+        : (isDarkMode ? const Color(0xFFC5A572) : const Color(0xFF0097B2));
+    final Color iconColor = accentColor != null
+        ? Colors.white
+        : (isDarkMode ? Colors.white70 : const Color(0xFF1A2332));
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 28.0),
@@ -31,7 +43,7 @@ class FitnessSessionsGrid extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Top Fitness Sessions",
+            sectionTitle ?? "Top Fitness Sessions",
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               color: textColor,
               fontWeight: FontWeight.bold,
@@ -55,6 +67,8 @@ class FitnessSessionsGrid extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
                           colors: [
                             iconBgStart,
                             iconBgEnd,

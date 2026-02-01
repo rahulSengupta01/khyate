@@ -64,14 +64,18 @@ DateTime? parseDDMMYYYY(String dateString) {
   }
 }
 
-/// Fetch today's classes from your API
-/// [categoryFilter] - 'fitness' or 'wellness' to filter by category, null for all
-Future<List<TodayClassData>> fetchTodaysClasses({String? categoryFilter}) async {
+/// Fetch classes for a given date from your API.
+/// [categoryFilter] - 'fitness' or 'wellness' to filter by category, null for all.
+/// [selectedDate] - when set, fetch classes for this date; when null, use today.
+Future<List<TodayClassData>> fetchTodaysClasses({
+  String? categoryFilter,
+  DateTime? selectedDate,
+}) async {
   try {
     final subscriptionService = SubscriptionService();
     final masterDataService = MasterDataService();
-    final today = DateTime.now();
-    final todayStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+    final date = selectedDate ?? DateTime.now();
+    final todayStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     
     // Fetch categories if filtering by category
     String? categoryId;
@@ -170,27 +174,47 @@ Future<List<TodayClassData>> fetchTodaysClasses({String? categoryFilter}) async 
   }
 }
 
-/// Widget for displaying Today's Classes horizontally
+/// Widget for displaying Today's Classes (or classes for a selected date) horizontally.
+/// Optional [selectedDate] filters by date; [searchQuery] and [trainerQuery] filter client-side (case-insensitive partial match).
 class TodaysClassesList extends StatelessWidget {
   final bool isDarkMode;
   final String? categoryFilter; // 'fitness' or 'wellness' to filter by category
-  
+  final DateTime? selectedDate; // when set, fetch classes for this date
+  final String searchQuery; // filter by program/class name (partial, case-insensitive)
+  final String trainerQuery; // filter by trainer name (partial, case-insensitive)
+
   const TodaysClassesList({
-    super.key, 
+    super.key,
     this.isDarkMode = false,
-    this.categoryFilter, // null means show all
+    this.categoryFilter,
+    this.selectedDate,
+    this.searchQuery = '',
+    this.trainerQuery = '',
   });
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<TodayClassData>>(
-      future: fetchTodaysClasses(categoryFilter: categoryFilter),
+      future: fetchTodaysClasses(
+        categoryFilter: categoryFilter,
+        selectedDate: selectedDate,
+      ),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final classes = snapshot.data!;
+        // Apply client-side search filters (case-insensitive partial match)
+        var classes = snapshot.data!;
+        if (searchQuery.isNotEmpty || trainerQuery.isNotEmpty) {
+          classes = classes.where((c) {
+            final matchesName = searchQuery.isEmpty ||
+                c.title.toLowerCase().contains(searchQuery.toLowerCase());
+            final matchesTrainer = trainerQuery.isEmpty ||
+                c.mentor.toLowerCase().contains(trainerQuery.toLowerCase());
+            return matchesName && matchesTrainer;
+          }).toList();
+        }
 
         if (classes.isEmpty) {
           return const Padding(

@@ -506,19 +506,24 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
             ),
 
             /// ----------------------------------------
-            /// ICON GRID ONLY (NO SEARCH / NO LOCATION)
+            /// TOP WELLNESS SESSIONS (brand color #AD8654)
             /// ----------------------------------------
             FitnessSessionsGrid(
               sessions: sessions,
               isDarkMode: widget.isDarkMode,
+              sectionTitle: 'Top Wellness Sessions',
+              accentColor: accentColor, // #AD8654
             ),
 
             const SizedBox(height: 28),
 
-            /// TODAY'S CLASSES SECTION
+            /// TODAY'S CLASSES SECTION (filtered by date and search when set)
             TodaysClassesList(
               isDarkMode: widget.isDarkMode,
-              categoryFilter: 'wellness', // Only show wellness classes
+              categoryFilter: 'wellness',
+              selectedDate: _selectedDate,
+              searchQuery: _searchQuery,
+              trainerQuery: _trainerQuery,
             ),
 
             const SizedBox(height: 32),
@@ -603,13 +608,14 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
 
             const SizedBox(height: 40),
 
-            /// FIND YOUR NEW LATEST PACKAGES SECTION
+            /// FIND YOUR NEW LATEST PACKAGES SECTION (filtered by date and search)
             MembershipCarousel(
-              searchQuery: '',
-              selectedTrainer: null,
+              searchQuery: _searchQuery,
+              selectedTrainer: _trainerQuery.isEmpty ? null : _trainerQuery,
               filterFutureDate: false,
               isDarkMode: widget.isDarkMode,
-              categoryFilter: 'wellness', // Only show wellness packages
+              categoryFilter: 'wellness',
+              selectedDate: _selectedDate,
             ),
 
             const SizedBox(height: 32),

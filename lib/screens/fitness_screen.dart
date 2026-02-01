@@ -486,8 +486,12 @@ class _FitnessScreenState extends State<FitnessScreen> {
             const SizedBox(height: 28),
             FitnessSessionsGrid(sessions: sessions, isDarkMode: widget.isDarkMode),
 const SizedBox(height: 28),
-TodaysClassesList(isDarkMode: widget.isDarkMode),
-const SizedBox(height: 92),
+TodaysClassesList(
+              isDarkMode: widget.isDarkMode,
+              categoryFilter: 'fitness',
+              selectedDate: selectedDate,
+            ),
+            const SizedBox(height: 92),
 
 
             /// TOP MEMBERSHIP SECTION
@@ -547,13 +551,14 @@ const SizedBox(height: 92),
 
             const SizedBox(height: 40),
 
-            /// FIND YOUR NEW LATEST PACKAGES SECTION
+            /// FIND YOUR NEW LATEST PACKAGES SECTION (filtered by date when selected)
             MembershipCarousel(
               searchQuery: searchQuery,
               selectedTrainer: selectedTrainer,
               filterFutureDate: filterFutureDate,
               isDarkMode: widget.isDarkMode,
-              categoryFilter: 'fitness', // Only show fitness packages
+              categoryFilter: 'fitness',
+              selectedDate: selectedDate,
             ),
 
             const SizedBox(height: 32),
