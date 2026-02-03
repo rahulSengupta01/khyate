@@ -193,17 +193,18 @@ class _TrainerManagerState extends State<TrainerManager> {
         trainerId: trainerId,
         status: newStatus,
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Trainer status updated to $newStatus')),
       );
-      // Reload trainers list
-      // TODO: Implement get trainers endpoint and reload
+      await _loadTrainers();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating status: ${e.toString()}')),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -327,10 +328,44 @@ class _TrainerManagerState extends State<TrainerManager> {
   }
 
   Future<void> _delete(String id) async {
-    // TODO: Implement delete trainer endpoint if available
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Delete functionality not yet implemented')),
+    if (id.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete trainer'),
+        content: const Text(
+          'Are you sure you want to delete this trainer? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
+    if (confirmed != true || !mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      await _trainerService.deleteTrainer(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Trainer deleted successfully')),
+      );
+      await _loadTrainers();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting trainer: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
