@@ -225,5 +225,65 @@ class SubscriptionBookingService {
       throw Exception('Mark subscription attendance error: ${e.toString()}');
     }
   }
+
+  /// GET /booking/get-all-subscriptionBooking
+  Future<List<dynamic>> getAllSubscriptionBookings() async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/booking/get-all-subscriptionBooking',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['bookings'] is List) return data['bookings'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get subscription bookings');
+    } catch (e) {
+      throw Exception('Get all subscription bookings error: ${e.toString()}');
+    }
+  }
+
+  /// GET /booking/get-allCustomers-subscriptions/:subscriptionId
+  Future<List<dynamic>> getCustomersBySubscription(String subscriptionId) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/booking/get-allCustomers-subscriptions/$subscriptionId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['customers'] is List) return data['customers'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get customers');
+    } catch (e) {
+      throw Exception('Get customers by subscription error: ${e.toString()}');
+    }
+  }
+
+  /// GET /booking/get-All-Subscription-Customers
+  Future<List<dynamic>> getAllSubscriptionCustomers() async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/booking/get-All-Subscription-Customers',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['customers'] is List) return data['customers'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get subscription customers');
+    } catch (e) {
+      throw Exception('Get all subscription customers error: ${e.toString()}');
+    }
+  }
 }
 

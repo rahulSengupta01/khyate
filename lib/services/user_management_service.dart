@@ -4,6 +4,99 @@ import '../config/app_config.dart';
 
 class UserManagementService {
   static const String baseUrl = AppConfig.baseUrl;
+
+  /// GET /user/get-customers-filtered. Query: country, city, gender, ageGroup, isActive, subscriptionId, categoryId, isSingleClass.
+  Future<List<dynamic>> getCustomersFiltered({
+    String? country,
+    String? city,
+    String? gender,
+    String? ageGroup,
+    bool? isActive,
+    String? subscriptionId,
+    String? categoryId,
+    bool? isSingleClass,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (country != null && country.isNotEmpty) queryParams['country'] = country;
+      if (city != null && city.isNotEmpty) queryParams['city'] = city;
+      if (gender != null && gender.isNotEmpty) queryParams['gender'] = gender;
+      if (ageGroup != null && ageGroup.isNotEmpty) queryParams['ageGroup'] = ageGroup;
+      if (isActive != null) queryParams['isActive'] = isActive.toString();
+      if (subscriptionId != null && subscriptionId.isNotEmpty) queryParams['subscriptionId'] = subscriptionId;
+      if (categoryId != null && categoryId.isNotEmpty) queryParams['categoryId'] = categoryId;
+      if (isSingleClass != null) queryParams['isSingleClass'] = isSingleClass.toString();
+
+      final response = await ApiService.get(
+        '$baseUrl/user/get-customers-filtered',
+        requireAuth: true,
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['users'] is List) return data['users'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get customers');
+    } catch (e) {
+      throw Exception('Get customers filtered error: ${e.toString()}');
+    }
+  }
+
+  /// GET /user/get-userby-id/:id — single user/customer by ID. Requires JWT.
+  Future<Map<String, dynamic>?> getUserById(String id) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/user/get-userby-id/$id',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) return data;
+        if (data is Map) return Map<String, dynamic>.from(data);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to get user');
+    } catch (e) {
+      throw Exception('Get user by id error: ${e.toString()}');
+    }
+  }
+
+  /// GET /user/get-all-user — all users (any role). Filter by role on frontend for "all customers". Requires JWT.
+  Future<List<dynamic>> getAllUsers() async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/user/get-all-user',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['users'] is List) return data['users'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get users');
+    } catch (e) {
+      throw Exception('Get all users error: ${e.toString()}');
+    }
+  }
+
+  /// DELETE /user/delete-user/:id
+  Future<Map<String, dynamic>?> deleteUser(String userId) async {
+    try {
+      final response = await ApiService.delete(
+        '$baseUrl/user/delete-user/$userId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) return response['data'];
+      throw Exception(response['error'] ?? 'Failed to delete user');
+    } catch (e) {
+      throw Exception('Delete user error: ${e.toString()}');
+    }
+  }
   
   // 2.1 Update User Status
   Future<Map<String, dynamic>?> updateUserStatus({

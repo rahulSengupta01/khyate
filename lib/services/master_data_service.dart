@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'api_service.dart';
 import '../config/app_config.dart';
 
@@ -179,32 +180,103 @@ class MasterDataService {
     }
   }
 
-  // 3.10 Get All Location Masters
-  // Note: This endpoint requires authentication (verifyJWT middleware)
+  /// POST /api/v1/master/get-all-location-master
+  /// Body: { "page": 1, "limit": 100 }. Headers: Authorization Bearer JWT, Content-Type application/json.
+  /// Parses locations from response.data.allLocationMasters (CRITICAL).
   Future<List<dynamic>> getAllLocationMasters({
     int page = 1,
-    int limit = 10,
+    int limit = 100,
     String? search,
   }) async {
     try {
-      final payload = {
+      final payload = <String, dynamic>{
         'page': page,
         'limit': limit,
-        if (search != null && search.isNotEmpty) 'search': search,
       };
+      if (search != null && search.isNotEmpty) payload['search'] = search;
+
       final response = await ApiService.post(
         '$baseUrl/master/get-all-location-master',
         payload,
-        requireAuth: true, // Changed to true - endpoint requires JWT authentication
+        requireAuth: true,
       );
-      if (response['success'] == true) {
-        return _extractListFromResponse(response);
-      } else {
+
+      final statusCode = response['statusCode'];
+      if (statusCode == 401) {
+        print('Location Master API: 401 Unauthorized (JWT expired or invalid).');
+        throw Exception('Session expired. Please log in again.');
+      }
+      if (statusCode == 404) {
+        print('Location Master API: 404 Endpoint not found. Check URL: /master/get-all-location-master');
+        throw Exception('Location service not found. Please contact support.');
+      }
+      if (statusCode != null && statusCode >= 500) {
+        print('Location Master API: $statusCode Server error.');
+        throw Exception('Server error. Please try again later.');
+      }
+
+      if (response['success'] != true) {
         throw Exception(response['error'] ?? 'Failed to get locations');
       }
+
+      final list = _extractLocationMastersFromResponse(response);
+      print('Location Master API: parsed ${list.length} location(s).');
+
+      if (list.isEmpty) {
+        final data = response['data'];
+        if (data != null) {
+          print('Location Master API: response.data type=${data.runtimeType}. '
+              'If Map, keys: ${data is Map ? (data as Map).keys.toList() : "n/a"}');
+        } else {
+          print('Location Master API: response.data is null.');
+        }
+        print('No Location Masters found. Creating a default one.');
+        try {
+          final created = await createDefaultLocationMaster();
+          if (created != null) {
+            final refetch = await ApiService.post(
+              '$baseUrl/master/get-all-location-master',
+              {'page': 1, 'limit': 100},
+              requireAuth: true,
+            );
+            if (refetch['success'] == true) {
+              final refetched = _extractLocationMastersFromResponse(refetch);
+              print('Location Master: re-fetched ${refetched.length} location(s) after creating default.');
+              return refetched;
+            }
+          }
+        } catch (e) {
+          print('Location Master: failed to create default: $e');
+        }
+        return [];
+      }
+
+      return list;
     } catch (e) {
       throw Exception('Get locations error: ${e.toString()}');
     }
+  }
+
+  /// Parse locations: prefer response.data.allLocationMasters; fallback to response.data (List) or nested data.data.allLocationMasters.
+  /// Backend may return { statusCode, data: { allLocationMasters: [...] } } so list is at data.data.allLocationMasters.
+  List<dynamic> _extractLocationMastersFromResponse(Map<String, dynamic> response) {
+    final data = response['data'];
+    // Backend may return data as array directly: { success: true, data: [ ... ] }
+    if (data is List) {
+      return data;
+    }
+    if (data is! Map) return [];
+    final list = data['allLocationMasters'];
+    if (list is List) return list;
+    if (data['data'] is List) return data['data'];
+    if (data['locations'] is List) return data['locations'];
+    // Nested: { statusCode, data: { allLocationMasters: [...] } } → response.data.data.allLocationMasters
+    final inner = data['data'];
+    if (inner is Map) {
+      if (inner['allLocationMasters'] is List) return inner['allLocationMasters'];
+      if (inner['data'] is List) return inner['data'];
+    }
+    return [];
   }
 
   // 3.11 Get Locations by Country and City
@@ -384,6 +456,256 @@ class MasterDataService {
       }
     } catch (e) {
       throw Exception('Get active roles error: ${e.toString()}');
+    }
+  }
+
+  /// POST /master/create-location-master
+  /// Body: streetName, country, city, landmark?, is_active?, location: [latitude, longitude]
+  Future<Map<String, dynamic>?> createLocationMaster({
+    required String streetName,
+    required String country,
+    required String city,
+    String? landmark,
+    bool isActive = true,
+    required List<double> location,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'streetName': streetName,
+        'country': country,
+        'city': city,
+        'is_active': isActive,
+        'location': location.length >= 2 ? location : [0.0, 0.0],
+      };
+      if (landmark != null && landmark.isNotEmpty) payload['landmark'] = landmark;
+
+      final response = await ApiService.post(
+        '$baseUrl/master/create-location-master',
+        payload,
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        // Backend may put created document in data, data.data, data.location, data.result, etc.
+        Map<String, dynamic>? doc;
+        if (data is Map<String, dynamic> && (data['_id'] != null || data['id'] != null)) {
+          doc = data;
+        } else if (data is Map && data['data'] is Map) {
+          final d = data['data'] as Map;
+          doc = Map<String, dynamic>.from(d);
+        }
+        if (doc == null && data is Map) {
+          for (final key in ['location', 'result', 'createdLocation', 'locationMaster']) {
+            final v = data[key];
+            if (v is Map && (v['_id'] != null || v['id'] != null)) {
+              doc = Map<String, dynamic>.from(v);
+              break;
+            }
+          }
+        }
+        return doc;
+      } else {
+        final statusCode = response['statusCode'];
+        final error = response['error'] ?? response['data']?['message'] ?? response['data']?['error'] ?? 'Failed to create location';
+        if (statusCode == 400) {
+          print('Location Master create 400: $error. Payload sent: streetName, country (id), city (id), landmark?, location.');
+        }
+        throw Exception(error.toString());
+      }
+    } catch (e) {
+      throw Exception('Create location error: ${e.toString()}');
+    }
+  }
+
+  /// Create a default Location Master when none exist.
+  /// Backend expects country and city as ObjectIds (from country/city masters), not names.
+  /// Fetches first available country and city; if none exist, skips create to avoid 400.
+  Future<Map<String, dynamic>?> createDefaultLocationMaster() async {
+    try {
+      final countries = await getAllCountries();
+      if (countries.isEmpty) {
+        print('Location Master: no countries in master — cannot auto-create default location.');
+        return null;
+      }
+      final firstCountry = countries.first;
+      final countryId = (firstCountry['_id'] ?? firstCountry['id'] ?? '').toString();
+      if (countryId.isEmpty) {
+        print('Location Master: country has no _id — cannot auto-create.');
+        return null;
+      }
+      final cities = await getCitiesByCountry(countryId);
+      if (cities.isEmpty) {
+        print('Location Master: no cities for country — cannot auto-create default location.');
+        return null;
+      }
+      final firstCity = cities.first;
+      final cityId = (firstCity['_id'] ?? firstCity['id'] ?? '').toString();
+      if (cityId.isEmpty) {
+        print('Location Master: city has no _id — cannot auto-create.');
+        return null;
+      }
+      final created = await createLocationMaster(
+        streetName: 'Auto Generated',
+        country: countryId,
+        city: cityId,
+        landmark: 'Auto Generated',
+        isActive: true,
+        location: [0.0, 0.0],
+      );
+      if (created != null) {
+        print('Location Master: default location created with _id=${created['_id'] ?? created['id']}');
+      }
+      return created;
+    } catch (e) {
+      print('Location Master: createDefaultLocationMaster failed: $e');
+      return null;
+    }
+  }
+
+  // 3.14 Create Category (multipart)
+  Future<Map<String, dynamic>?> createCategory({
+    required String name,
+    required String description,
+    bool isActive = true,
+    File? image,
+  }) async {
+    try {
+      final fields = <String, String>{
+        'name': name,
+        'description': description,
+        'isActive': isActive.toString(),
+      };
+      final response = await ApiService.postMultipart(
+        '$baseUrl/master/create-category',
+        fields,
+        files: image != null ? {'image': image} : null,
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) return data;
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      } else {
+        throw Exception(response['error'] ?? 'Failed to create category');
+      }
+    } catch (e) {
+      throw Exception('Create category error: ${e.toString()}');
+    }
+  }
+
+  /// PUT /master/update-location-master/:id
+  Future<Map<String, dynamic>?> updateLocationMaster({
+    required String id,
+    String? streetName,
+    String? country,
+    String? city,
+    String? landmark,
+    bool? isActive,
+    List<double>? location,
+  }) async {
+    try {
+      final payload = <String, dynamic>{};
+      if (streetName != null) payload['streetName'] = streetName;
+      if (country != null) payload['country'] = country;
+      if (city != null) payload['city'] = city;
+      if (landmark != null) payload['landmark'] = landmark;
+      if (isActive != null) payload['is_active'] = isActive;
+      if (location != null && location.length >= 2) payload['location'] = location;
+
+      final response = await ApiService.put(
+        '$baseUrl/master/update-location-master/$id',
+        payload,
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to update location');
+    } catch (e) {
+      throw Exception('Update location error: ${e.toString()}');
+    }
+  }
+
+  /// GET /master/get-location-master/:id
+  Future<Map<String, dynamic>?> getLocationMasterById(String id) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/master/get-location-master/$id',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to get location');
+    } catch (e) {
+      throw Exception('Get location by ID error: ${e.toString()}');
+    }
+  }
+
+  /// DELETE /master/delete-location-master-by-id/:id
+  Future<Map<String, dynamic>?> deleteLocationMaster(String id) async {
+    try {
+      final response = await ApiService.delete(
+        '$baseUrl/master/delete-location-master-by-id/$id',
+        requireAuth: true,
+      );
+      if (response['success'] == true) return response['data'];
+      throw Exception(response['error'] ?? 'Failed to delete location');
+    } catch (e) {
+      throw Exception('Delete location error: ${e.toString()}');
+    }
+  }
+
+  /// PUT /master/update-category/:id (multipart)
+  Future<Map<String, dynamic>?> updateCategory({
+    required String id,
+    String? name,
+    String? description,
+    bool? isActive,
+    File? image,
+  }) async {
+    try {
+      final fields = <String, dynamic>{};
+      if (name != null) fields['cName'] = name;
+      if (description != null) fields['description'] = description;
+      if (isActive != null) fields['isActive'] = isActive.toString();
+
+      final response = await ApiService.putMultipart(
+        '$baseUrl/master/update-category/$id',
+        fields,
+        files: image != null ? {'image': image} : null,
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to update category');
+    } catch (e) {
+      throw Exception('Update category error: ${e.toString()}');
+    }
+  }
+
+  /// DELETE /master/delete-category/:id
+  Future<Map<String, dynamic>?> deleteCategory(String id) async {
+    try {
+      final response = await ApiService.delete(
+        '$baseUrl/master/delete-category/$id',
+        requireAuth: true,
+      );
+      if (response['success'] == true) return response['data'];
+      throw Exception(response['error'] ?? 'Failed to delete category');
+    } catch (e) {
+      throw Exception('Delete category error: ${e.toString()}');
     }
   }
 }

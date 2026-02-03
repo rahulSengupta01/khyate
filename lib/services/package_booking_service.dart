@@ -140,5 +140,103 @@ class PackageBookingService {
       return [];
     }
   }
+
+  /// GET /package-booking/package-booking-activation/:bookingId
+  Future<Map<String, dynamic>?> activatePackageBooking(String bookingId) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/package-booking/package-booking-activation/$bookingId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to activate package booking');
+    } catch (e) {
+      throw Exception('Activate package booking error: ${e.toString()}');
+    }
+  }
+
+  /// GET /package-booking/get-all-package-booking
+  Future<List<dynamic>> getAllPackageBookings() async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/package-booking/get-all-package-booking',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['bookings'] is List) return data['bookings'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get package bookings');
+    } catch (e) {
+      throw Exception('Get all package bookings error: ${e.toString()}');
+    }
+  }
+
+  /// GET /package-booking/get-package-booking-by-id/:id
+  Future<Map<String, dynamic>?> getPackageBookingById(String id) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/package-booking/get-package-booking-by-id/$id',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to get package booking');
+    } catch (e) {
+      throw Exception('Get package booking by ID error: ${e.toString()}');
+    }
+  }
+
+  /// GET /package-booking/get-customers-by-package--id/:packageId
+  Future<List<dynamic>> getCustomersByPackageId(String packageId) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/package-booking/get-customers-by-package--id/$packageId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['customers'] is List) return data['customers'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get customers');
+    } catch (e) {
+      throw Exception('Get customers by package error: ${e.toString()}');
+    }
+  }
+
+  /// GET /package-booking/get-all-joined-classes-user
+  Future<List<dynamic>> getAllJoinedClassesUser() async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/package-booking/get-all-joined-classes-user',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['classes'] is List) return data['classes'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get joined classes');
+    } catch (e) {
+      throw Exception('Get all joined classes error: ${e.toString()}');
+    }
+  }
 }
 

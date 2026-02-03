@@ -32,32 +32,43 @@ class _PackageManagerState extends State<PackageManager> {
     _loadPackages();
   }
 
+  /// Parse packages from API result - same structure as membership_carousel.
+  List<dynamic> _parsePackagesFromResult(dynamic result) {
+    if (result == null) return [];
+    final r = result;
+    if (r is List) return List<dynamic>.from(r);
+    if (r is! Map) return [];
+    if (r['packages'] is List) return List<dynamic>.from(r['packages'] as List);
+    if (r['data'] is List) return List<dynamic>.from(r['data'] as List);
+    if (r['data'] is Map) {
+      final dataMap = r['data'] as Map;
+      if (dataMap['packages'] is List) return List<dynamic>.from(dataMap['packages'] as List);
+    }
+    return [];
+  }
+
   Future<void> _loadPackages() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
+      // Use same call as membership carousel: higher limit to get all packages
       final result = await _packageService.getAllPackages(
         page: _page,
-        limit: _limit,
+        limit: 100,
         search: _searchController.text.isEmpty ? null : _searchController.text,
       );
       if (mounted) {
         setState(() {
-          // Handle different response structures
-          if (result != null) {
-            _packages = result['packages'] ?? 
-                       result['data'] ?? 
-                       (result is List ? result : []);
-          } else {
-            _packages = [];
-          }
+          _packages = _parsePackagesFromResult(result);
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        // Extract clean error message
+        setState(() {
+          _packages = [];
+          _isLoading = false;
+        });
         String errorMsg = e.toString();
         if (errorMsg.contains('Exception:')) {
           errorMsg = errorMsg.replaceFirst('Exception: ', '');
@@ -67,8 +78,12 @@ class _PackageManagerState extends State<PackageManager> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading packages: $errorMsg'),
+            content: Text('Could not load packages. $errorMsg Tap refresh to retry.'),
             duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: _loadPackages,
+            ),
           ),
         );
       }
@@ -657,6 +672,7 @@ class _PackageManagerState extends State<PackageManager> {
                     label: const Text('Create Membership'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],

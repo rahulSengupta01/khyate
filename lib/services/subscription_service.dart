@@ -35,7 +35,7 @@ class SubscriptionService {
         'date': jsonEncode(date),
         'startTime': startTime,
         'endTime': endTime,
-        'Address': addressId, // LocationMaster ObjectId (not JSON)
+        'Address': addressId, // ONLY LocationMaster _id (do not send city name, full object, or address string)
         'isSingleClass': isSingleClass.toString(),
         if (mediaUrl != null && mediaUrl.isNotEmpty) 'mediaUrl': mediaUrl,
       };
