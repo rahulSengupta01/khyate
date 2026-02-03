@@ -26,6 +26,10 @@ class AdminSimpleTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final surfaceColor = theme.colorScheme.surface;
+    final onSurface = theme.colorScheme.onSurface;
+    final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
     return Card(
       elevation: AdminTheme.elevationCard,
       shape: RoundedRectangleBorder(
@@ -37,14 +41,14 @@ class AdminSimpleTable extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(AdminTheme.surface),
+              headingRowColor: WidgetStateProperty.all(surfaceColor),
               columns: columnLabels
                   .map((c) => DataColumn(
                         label: Text(
                           c,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: AdminTheme.textPrimary,
+                            color: onSurface,
                             fontSize: 13,
                           ),
                         ),
@@ -71,13 +75,13 @@ class AdminSimpleTable extends StatelessWidget {
           if (onPageChanged != null && totalPages > 1)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(color: AdminTheme.surface),
+              decoration: BoxDecoration(color: surfaceColor),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Showing ${((currentPage - 1) * rowsPerPage) + 1}–${(currentPage * rowsPerPage).clamp(0, totalItems)} of $totalItems',
-                    style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 13),
+                    style: TextStyle(color: onSurfaceVariant, fontSize: 13),
                   ),
                   Row(
                     children: [
@@ -85,7 +89,7 @@ class AdminSimpleTable extends StatelessWidget {
                         icon: const Icon(Icons.chevron_left),
                         onPressed: currentPage > 1 ? () => onPageChanged!(currentPage - 1) : null,
                       ),
-                      Text('$currentPage / $totalPages', style: const TextStyle(fontSize: 13)),
+                      Text('$currentPage / $totalPages', style: TextStyle(fontSize: 13, color: onSurface)),
                       IconButton(
                         icon: const Icon(Icons.chevron_right),
                         onPressed: currentPage < totalPages ? () => onPageChanged!(currentPage + 1) : null,

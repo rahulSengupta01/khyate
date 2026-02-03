@@ -243,7 +243,7 @@ class _RatingsSectionState extends State<RatingsSection> with SingleTickerProvid
         TabBar(
           controller: _tabController,
           labelColor: AdminTheme.primary,
-          unselectedLabelColor: AdminTheme.textSecondary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           tabs: const [
             Tab(text: 'Trainers'),
             Tab(text: 'Memberships'),
@@ -364,7 +364,7 @@ class _ReviewDetailsSheetState extends State<_ReviewDetailsSheet> {
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Text(widget.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Text(widget.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         ),
         Expanded(
           child: ListView.builder(
@@ -393,7 +393,7 @@ class _ReviewDetailsSheetState extends State<_ReviewDetailsSheet> {
                       ),
                       if (review.isNotEmpty) const SizedBox(height: 8),
                       if (review.isNotEmpty) Text(review, style: const TextStyle(fontSize: 14)),
-                      if (adminReply.isNotEmpty) ...[const SizedBox(height: 8), Text('Reply: $adminReply', style: TextStyle(fontSize: 13, color: AdminTheme.textSecondary))],
+                      if (adminReply.isNotEmpty) ...[const SizedBox(height: 8), Text('Reply: $adminReply', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant))],
                       const SizedBox(height: 8),
                       Row(
                         children: [

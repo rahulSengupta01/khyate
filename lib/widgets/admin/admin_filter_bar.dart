@@ -36,7 +36,7 @@ class AdminFilterBar extends StatelessWidget {
                     onPressed: onClearFilters,
                     icon: const Icon(Icons.clear_all, size: 18),
                     label: const Text('Clear Filters'),
-                    style: TextButton.styleFrom(foregroundColor: AdminTheme.textSecondary),
+                    style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
               ],
             ),
