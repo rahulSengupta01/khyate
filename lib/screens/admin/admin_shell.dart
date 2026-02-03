@@ -11,7 +11,6 @@ enum AdminSection {
   trainers,
   memberships,
   promoCodes,
-  payments,
   ratings,
   masters,
 }
@@ -48,7 +47,6 @@ class _AdminShellState extends State<AdminShell> {
     (AdminSection.trainers, Icons.person_outline, 'Trainers'),
     (AdminSection.memberships, Icons.card_membership, 'Memberships'),
     (AdminSection.promoCodes, Icons.local_offer_outlined, 'Promo Codes'),
-    (AdminSection.payments, Icons.payment, 'Payments'),
     (AdminSection.ratings, Icons.star_outline, 'Ratings'),
     (AdminSection.masters, Icons.settings, 'Masters'),
   ];

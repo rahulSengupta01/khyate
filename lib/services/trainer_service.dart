@@ -30,7 +30,7 @@ class TrainerService {
       // Build fields map - trim all string fields and ensure proper formatting
       // Gender must be: "Male", "Female", "Others" (capitalized)
       // Experience must be: "EXPERIENCE" or "FRESHER"
-      // Backend User model requires emirates_id. Send both snake_case and camelCase so it's never missed.
+      // User enters a single Emirates ID in the form; we send that one value under the backend's expected key(s).
       final trimmedEmiratesId = emiratesId.trim();
       final effectiveEmiratesId = trimmedEmiratesId.isEmpty
           ? 'TEMP-${DateTime.now().millisecondsSinceEpoch}'
@@ -41,7 +41,6 @@ class TrainerService {
         'first_name': firstName.trim(),
         'phone_number': phoneNumber.trim(),
         'emirates_id': effectiveEmiratesId,
-        'emiratesId': effectiveEmiratesId,
         'password': password,
       };
       

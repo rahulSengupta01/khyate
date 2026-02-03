@@ -4,11 +4,10 @@ import 'package:Outbox/screens/admin/trainer_manager.dart';
 import 'package:Outbox/screens/admin/promo_code_manager.dart';
 import 'package:Outbox/screens/admin/sections/customers_section.dart';
 import 'package:Outbox/screens/admin/sections/memberships_section.dart';
-import 'package:Outbox/screens/admin/sections/payments_section.dart';
 import 'package:Outbox/screens/admin/sections/ratings_section.dart';
 import 'package:Outbox/screens/admin/sections/masters_section.dart';
 
-/// Admin Dashboard: modern shell (sidebar + top bar) with 7 sections.
+/// Admin Dashboard: modern shell (sidebar + top bar) with 6 sections.
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
@@ -29,8 +28,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return 'Memberships';
       case AdminSection.promoCodes:
         return 'Promo Codes';
-      case AdminSection.payments:
-        return 'Payments';
       case AdminSection.ratings:
         return 'Ratings';
       case AdminSection.masters:
@@ -48,8 +45,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return const MembershipsSection();
       case AdminSection.promoCodes:
         return PromoCodeManager();
-      case AdminSection.payments:
-        return const PaymentsSection();
       case AdminSection.ratings:
         return const RatingsSection();
       case AdminSection.masters:
