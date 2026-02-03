@@ -8,6 +8,11 @@ import '../../services/trainer_service.dart';
 import '../../widgets/searchable_dropdown.dart';
 
 class SubscriptionManager extends StatefulWidget {
+  /// Title for this tab: e.g. 'Programs' or 'Classes'.
+  final String title;
+
+  const SubscriptionManager({super.key, this.title = 'Subscriptions'});
+
   @override
   State<SubscriptionManager> createState() => _SubscriptionManagerState();
 }
@@ -100,9 +105,19 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
         setState(() {
           _locations = locations;
         });
+        if (locations.isEmpty) {
+          debugPrint('SubscriptionManager: Location dropdown is empty after load.');
+        } else {
+          debugPrint('SubscriptionManager: Loaded ${locations.length} location(s) for dropdown.');
+        }
       }
     } catch (e) {
-      // Handle error silently
+      debugPrint('SubscriptionManager: _loadLocations error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load locations: ${e.toString().replaceAll('Exception: ', '')}')),
+        );
+      }
     }
   }
 
@@ -119,7 +134,17 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       );
       if (mounted) {
         setState(() {
-          _subscriptions = result?['subscriptions'] ?? result?['data'] ?? [];
+          final r = result as dynamic;
+          if (r == null) {
+            _subscriptions = [];
+          } else if (r is List) {
+            _subscriptions = List<dynamic>.from(r);
+          } else if (r is Map) {
+            final data = r['subscriptions'] ?? r['data'] ?? [];
+            _subscriptions = data is List ? List<dynamic>.from(data) : [];
+          } else {
+            _subscriptions = [];
+          }
           _isLoading = false;
         });
       }
@@ -362,6 +387,9 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
 
     if (!mounted) return;
     setState(() => _isLoading = true);
+    // Address must be LocationMaster _id only (not city name, full object, or address string).
+    final addressId = _selectedAddressId!;
+    debugPrint('SubscriptionManager: Creating subscription with Address (LocationMaster _id): $addressId');
     try {
       await _subscriptionService.createSubscription(
         media: _selectedMedia,
@@ -375,7 +403,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
         date: _selectedDates,
         startTime: _startTimeController.text,
         endTime: _endTimeController.text,
-        addressId: _selectedAddressId!,
+        addressId: addressId,
         isSingleClass: _isSingleClass,
       );
       
@@ -447,18 +475,22 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                           child: const Icon(Icons.fitness_center, color: Colors.purple, size: 28),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Create Subscription',
-                                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                                'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
+                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'Add a new course or class',
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                widget.title == 'Programs'
+                                    ? 'Add a new program'
+                                    : widget.title == 'Classes'
+                                        ? 'Add a new class'
+                                        : 'Add a new course or class',
+                                style: const TextStyle(fontSize: 14, color: Colors.grey),
                               ),
                             ],
                           ),
@@ -831,7 +863,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                             )
                           : const Icon(Icons.add_circle, size: 20),
                       label: Text(
-                        _isLoading ? 'Creating...' : 'Create Subscription',
+                        _isLoading ? 'Creating...' : 'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
@@ -878,18 +910,18 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                           child: const Icon(Icons.list, color: Colors.blue, size: 24),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Subscriptions List',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                '${widget.title} List',
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'View and manage all subscriptions',
-                                style: TextStyle(fontSize: 14, color: Colors.grey),
+                                'View and manage all ${widget.title.toLowerCase()}',
+                                style: const TextStyle(fontSize: 14, color: Colors.grey),
                               ),
                             ],
                           ),
@@ -905,7 +937,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                           child: TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              labelText: 'Search subscriptions...',
+                              labelText: 'Search ${widget.title.toLowerCase()}...',
                               prefixIcon: const Icon(Icons.search, color: Colors.grey),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),

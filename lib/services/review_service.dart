@@ -256,6 +256,76 @@ class ReviewService {
     }
   }
   
+  /// GET /user/get-all-trainer-reviews
+  Future<List<dynamic>> getAllTrainerReviews() async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/user/get-all-trainer-reviews',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['reviews'] is List) return data['reviews'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get trainer reviews');
+    } catch (e) {
+      throw Exception('Get all trainer reviews error: ${e.toString()}');
+    }
+  }
+
+  /// GET /user/get-trainer-review/:trainerId
+  Future<List<dynamic>> getTrainerReview(String trainerId) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/user/get-trainer-review/$trainerId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['reviews'] is List) return data['reviews'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get trainer review');
+    } catch (e) {
+      throw Exception('Get trainer review error: ${e.toString()}');
+    }
+  }
+
+  /// GET /user/get-all-subscription-rating-review (all subscription reviews, no id).
+  /// [requireAuth] — set true when calling from admin if backend expects JWT.
+  Future<List<dynamic>> getAllSubscriptionRatingReview({bool requireAuth = false}) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/user/get-all-subscription-rating-review',
+        requireAuth: requireAuth,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map) {
+          if (data['data'] is List) return data['data'] as List;
+          if (data['reviews'] is List) return data['reviews'] as List;
+          if (data['subscriptionReviews'] is List) return data['subscriptionReviews'] as List;
+          if (data['reviewList'] is List) return data['reviewList'] as List;
+          if (data['list'] is List) return data['list'] as List;
+          // some backends return { subscriptionReviews: [...] } or similar
+          for (final v in data.values) {
+            if (v is List && v.isNotEmpty) return v;
+          }
+        }
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get subscription reviews');
+    } catch (e) {
+      throw Exception('Get all subscription rating review error: ${e.toString()}');
+    }
+  }
+
   // Get all subscription reviews with average rating
   Future<Map<String, dynamic>?> getAllSubscriptionReviews({
     required String subscriptionId,
@@ -369,7 +439,7 @@ class ReviewService {
       return null;
     } catch (e) {
       print('Error getting user review: $e');
-    return null;
+      return null;
     }
   }
 }

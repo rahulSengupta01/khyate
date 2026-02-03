@@ -451,6 +451,31 @@ class AuthService {
     }
   }
   
+  // Refresh access token. Body: { "refreshToken" } or cookie.
+  Future<Map<String, dynamic>?> refreshToken({String? refreshToken}) async {
+    try {
+      final body = refreshToken != null && refreshToken.isNotEmpty
+          ? <String, dynamic>{'refreshToken': refreshToken}
+          : <String, dynamic>{};
+      final response = await ApiService.post(
+        '$baseUrl/auth/refresh-token',
+        body,
+        requireAuth: false,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) {
+          final token = data['accessToken'] ?? data['access_token'] ?? data['token'];
+          if (token != null) await ApiService.saveToken(token.toString());
+        }
+        return response['data'] is Map ? Map<String, dynamic>.from(response['data'] as Map) : null;
+      }
+      throw Exception(response['error'] ?? 'Failed to refresh token');
+    } catch (e) {
+      throw Exception('Refresh token error: ${e.toString()}');
+    }
+  }
+
   // Get current user
   Future<Map<String, dynamic>?> getCurrentUser() async {
     try {

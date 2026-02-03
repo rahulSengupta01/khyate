@@ -129,7 +129,7 @@ class PackageService {
       final response = await ApiService.post(
         '$baseUrl/package/get-all-packages',
         payload,
-        requireAuth: false, // Public route
+        requireAuth: false, // Same as membership carousel (public list)
       );
       
       print('Get packages response: $response');

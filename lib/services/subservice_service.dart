@@ -99,5 +99,38 @@ class SubServiceService {
       throw Exception('Get all sub services error: ${e.toString()}');
     }
   }
+
+  /// GET /subservice/getSubServiceById/:subServiceId
+  Future<Map<String, dynamic>?> getSubServiceById(String subServiceId) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/subservice/getSubServiceById/$subServiceId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to get sub service');
+    } catch (e) {
+      throw Exception('Get sub service by ID error: ${e.toString()}');
+    }
+  }
+
+  /// DELETE /subservice/deleteSubService/:subServiceId
+  Future<Map<String, dynamic>?> deleteSubService(String subServiceId) async {
+    try {
+      final response = await ApiService.delete(
+        '$baseUrl/subservice/deleteSubService/$subServiceId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) return response['data'];
+      throw Exception(response['error'] ?? 'Failed to delete sub service');
+    } catch (e) {
+      throw Exception('Delete sub service error: ${e.toString()}');
+    }
+  }
 }
 

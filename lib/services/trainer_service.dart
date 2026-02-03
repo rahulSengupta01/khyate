@@ -30,17 +30,18 @@ class TrainerService {
       // Build fields map - trim all string fields and ensure proper formatting
       // Gender must be: "Male", "Female", "Others" (capitalized)
       // Experience must be: "EXPERIENCE" or "FRESHER"
-      // Note: emirates_id is required by backend User model, even though not in API docs
+      // Backend User model requires emirates_id. Send both snake_case and camelCase so it's never missed.
       final trimmedEmiratesId = emiratesId.trim();
-      if (trimmedEmiratesId.isEmpty) {
-        throw Exception('Emirates ID is required by the backend model');
-      }
-      
+      final effectiveEmiratesId = trimmedEmiratesId.isEmpty
+          ? 'TEMP-${DateTime.now().millisecondsSinceEpoch}'
+          : trimmedEmiratesId;
+
       final fields = <String, dynamic>{
         'email': email.trim(),
         'first_name': firstName.trim(),
         'phone_number': phoneNumber.trim(),
-        'emirates_id': trimmedEmiratesId,
+        'emirates_id': effectiveEmiratesId,
+        'emiratesId': effectiveEmiratesId,
         'password': password,
       };
       
@@ -87,11 +88,13 @@ class TrainerService {
       if (normalizedExperience.isNotEmpty) {
         fields['experience'] = normalizedExperience;
       }
-      if (experienceYear >= 0) { // Allow 0 years of experience
-        fields['experienceYear'] = experienceYear.toString();
+      // Many backends expect FRESHER to have 0 experience years; send 0 to avoid 400 validation
+      final effectiveExperienceYear = normalizedExperience == 'FRESHER' ? 0 : experienceYear;
+      if (effectiveExperienceYear >= 0) {
+        fields['experienceYear'] = effectiveExperienceYear.toString();
       }
       
-      // Handle serviceProvider - send as JSON string (empty array is valid)
+      // Handle serviceProvider - send as JSON string (empty array is valid). Backend may parse with JSON.parse().
       fields['serviceProvider'] = jsonEncode(serviceProvider);
       
       if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
@@ -116,26 +119,29 @@ class TrainerService {
         }
         return responseData;
       } else {
-        // Extract error message from response - check multiple possible locations
-        String errorMsg = response['error'] ?? 
-                        response['data']?['message'] ?? 
-                        response['data']?['error'] ?? 
-                        response['data']?['msg'] ??
-                        (response['data'] is String ? response['data'] : null) ??
-                        'Failed to create trainer';
-        
-        // Check if error contains validation errors and extract them
-        if (response['data'] is Map) {
-          final data = response['data'] as Map;
-          if (data.containsKey('errors') && data['errors'] is Map) {
-            final errors = data['errors'] as Map;
-            final errorList = errors.entries.map((e) => '${e.key}: ${e.value}').join(', ');
-            if (errorList.isNotEmpty) {
-              errorMsg = errorList;
+        // Surface backend 400/validation message so user sees the real reason
+        String errorMsg = response['error'] ?? 'Failed to create trainer';
+        final data = response['data'];
+        if (data is Map) {
+          final msg = data['message'] ?? data['error'] ?? data['msg'];
+          if (msg != null && msg.toString().trim().isNotEmpty) {
+            errorMsg = msg.toString();
+          }
+          if (data['errors'] != null) {
+            final errors = data['errors'];
+            if (errors is Map) {
+              final parts = errors.entries.map((e) => '${e.key}: ${e.value}').toList();
+              if (parts.isNotEmpty) {
+                errorMsg = errorMsg + (errorMsg.endsWith('.') ? ' ' : '. ') + parts.join('; ');
+              }
+            } else if (errors is List) {
+              final parts = errors.map((e) => e.toString()).toList();
+              if (parts.isNotEmpty) {
+                errorMsg = errorMsg + (errorMsg.endsWith('.') ? ' ' : '. ') + parts.join('; ');
+              }
             }
           }
         }
-        
         throw Exception(errorMsg);
       }
     } catch (e) {
@@ -357,6 +363,78 @@ class TrainerService {
       }
     } catch (e) {
       throw Exception('Get trainers error: ${e.toString()}');
+    }
+  }
+
+  /// GET /trainer/get-trainerBy-id/:id
+  Future<Map<String, dynamic>?> getTrainerById(String trainerId) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/trainer/get-trainerBy-id/$trainerId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to get trainer');
+    } catch (e) {
+      throw Exception('Get trainer by ID error: ${e.toString()}');
+    }
+  }
+
+  /// DELETE /trainer/delete-trainer/:id
+  Future<Map<String, dynamic>?> deleteTrainer(String trainerId) async {
+    try {
+      final response = await ApiService.delete(
+        '$baseUrl/trainer/delete-trainer/$trainerId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) return response['data'];
+      throw Exception(response['error'] ?? 'Failed to delete trainer');
+    } catch (e) {
+      throw Exception('Delete trainer error: ${e.toString()}');
+    }
+  }
+
+  /// GET /trainer/get-all-orders (Trainer's orders)
+  Future<List<dynamic>> getAllOrders() async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/trainer/get-all-orders',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is List) return data;
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is Map && data['orders'] is List) return data['orders'] as List;
+        return [];
+      }
+      throw Exception(response['error'] ?? 'Failed to get orders');
+    } catch (e) {
+      throw Exception('Get all orders error: ${e.toString()}');
+    }
+  }
+
+  /// GET /trainer/get-all-order-by-id/:id
+  Future<Map<String, dynamic>?> getOrderById(String orderId) async {
+    try {
+      final response = await ApiService.get(
+        '$baseUrl/trainer/get-all-order-by-id/$orderId',
+        requireAuth: true,
+      );
+      if (response['success'] == true) {
+        final data = response['data'];
+        if (data is Map) return Map<String, dynamic>.from(data);
+        if (data is Map && data['data'] is Map) return Map<String, dynamic>.from(data['data'] as Map);
+        return null;
+      }
+      throw Exception(response['error'] ?? 'Failed to get order');
+    } catch (e) {
+      throw Exception('Get order by ID error: ${e.toString()}');
     }
   }
 }
