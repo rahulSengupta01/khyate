@@ -77,7 +77,7 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
         TabBar(
           controller: _tabController,
           labelColor: AdminTheme.primary,
-          unselectedLabelColor: AdminTheme.textSecondary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           tabs: const [
             Tab(text: 'Location'),
             Tab(text: 'Categories'),

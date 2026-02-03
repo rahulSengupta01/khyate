@@ -224,11 +224,12 @@ class _PaymentsSectionState extends State<PaymentsSection> {
   }
 
   Widget _detailRow(String label, String value) {
+    final color = Theme.of(context).colorScheme.onSurface;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(color: Colors.black87, fontSize: 14),
+          style: TextStyle(color: color, fontSize: 14),
           children: [
             TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
             TextSpan(text: value),

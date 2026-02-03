@@ -1,4 +1,5 @@
 import 'package:Outbox/providers/cart_provider.dart';
+import 'package:Outbox/providers/theme_provider.dart';
 import 'package:Outbox/screens/auth_check.dart';
 import 'package:Outbox/screens/onboarding_screen.dart';
 import 'package:flutter/material.dart';
@@ -37,12 +38,21 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CartProvider(),     // ✅ PROVIDER INITIALIZED
         ),
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+        ),
       ],
-      child: MaterialApp(
-        title: 'Outbox',
-        debugShowCheckedModeBanner: false,
-        home: AuthCheck(),
-
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Outbox',
+            debugShowCheckedModeBanner: false,
+            theme: themeProvider.lightTheme,
+            darkTheme: themeProvider.darkTheme,
+            themeMode: themeProvider.themeMode,
+            home: const AuthCheck(key: ValueKey('auth_check')),
+          );
+        },
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:Outbox/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 // import 'package:khyate_b2b/screens/admin_dashboard.dart';
 // import 'package:khyate_b2b/screens/profile_screen.dart';
@@ -56,13 +57,13 @@ class AppShell extends StatefulWidget {
       _maybeOf(context)?._isAdmin ?? false;
 
   static bool isDarkMode(BuildContext context) =>
-      _maybeOf(context)?._isDarkMode ?? false;
+      context.watch<ThemeProvider>().isDarkMode;
 
   static void showLogoutDialog(BuildContext context) =>
       _maybeOf(context)?._showLogoutConfirmation(context);
 
   static void toggleTheme(BuildContext context) =>
-      _maybeOf(context)?._onToggleTheme();
+      context.read<ThemeProvider>().toggleTheme();
 
   static void openProfileOrAdmin(BuildContext context) =>
       _maybeOf(context)?._onProfilePressed();
@@ -76,7 +77,6 @@ class _AppShellState extends State<AppShell> {
 
   late int _selectedIndex;
   late bool _hasNavSelection;
-  bool _isDarkMode = false;
 
   // 🔥 Admin flag
   bool _isAdmin = false;
@@ -100,10 +100,11 @@ class _AppShellState extends State<AppShell> {
 
   // ⭐ Logout confirmation dialog
   void _showLogoutConfirmation(BuildContext context) {
-    final Color dialogBg = _isDarkMode ? const Color(0xFF1E293B) : Colors.white;
-    final Color titleColor = _isDarkMode ? Colors.white : const Color(0xFF1A2332);
-    final Color textColor = _isDarkMode ? Colors.white70 : const Color(0xFF4A5568);
-    final Color borderColor = _isDarkMode ? const Color(0xFF3A4555) : const Color(0xFFE2E8F0);
+    final theme = Theme.of(context);
+    final Color dialogBg = theme.colorScheme.surface;
+    final Color titleColor = theme.colorScheme.onSurface;
+    final Color textColor = theme.colorScheme.onSurfaceVariant;
+    final Color borderColor = theme.brightness == Brightness.dark ? const Color(0xFF3A4555) : const Color(0xFFE2E8F0);
 
     showDialog(
       context: context,
@@ -211,10 +212,11 @@ class _AppShellState extends State<AppShell> {
                 title: const Text("Profile"),
                 onTap: () {
                   Navigator.pop(ctx);
+                  final isDark = context.read<ThemeProvider>().isDarkMode;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ProfileScreen(isDarkMode: _isDarkMode),
+                      builder: (_) => ProfileScreen(isDarkMode: isDark),
                     ),
                   );
                 },
@@ -239,12 +241,6 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _onToggleTheme() {
-    setState(() {
-      _isDarkMode = !_isDarkMode;
-    });
-  }
-
   void _onProfilePressed() async {
     // Re-check admin status in case it wasn't set yet
     final isAdminUser = await ApiService.isAdmin();
@@ -255,10 +251,11 @@ class _AppShellState extends State<AppShell> {
     if (_isAdmin) {
       _showAdminOptions();
     } else {
+      final isDark = context.read<ThemeProvider>().isDarkMode;
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ProfileScreen(isDarkMode: _isDarkMode),
+          builder: (_) => ProfileScreen(isDarkMode: isDark),
         ),
       );
     }
@@ -278,18 +275,18 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final Color scaffoldBackground =
-        _isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFFEFCF8);
+    final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
+    final Color scaffoldBackground = Theme.of(context).scaffoldBackgroundColor;
     final bool showSelection = _hasNavSelection;
     final int cartCount = context.watch<CartProvider>().items.length;
 
     final Widget displayedPage = showSelection
-        ? widget.pages[_selectedIndex].builder(context, _isDarkMode)
-        : widget.landingBuilder!(context, _isDarkMode);
+        ? widget.pages[_selectedIndex].builder(context, isDarkMode)
+        : widget.landingBuilder!(context, isDarkMode);
 
     final Widget currentPage = KeyedSubtree(
       key: ValueKey(
-        '${showSelection ? 'page_$_selectedIndex' : 'landing'}_${_isDarkMode ? 'dark' : 'light'}',
+        '${showSelection ? 'page_$_selectedIndex' : 'landing'}_${isDarkMode ? 'dark' : 'light'}',
       ),
       child: displayedPage,
     );
@@ -301,7 +298,7 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       key: ValueKey(
-        '${showSelection ? 'page_$_selectedIndex' : 'landing'}_${_isDarkMode ? 'dark' : 'light'}',
+        '${showSelection ? 'page_$_selectedIndex' : 'landing'}_${isDarkMode ? 'dark' : 'light'}',
       ),
       backgroundColor: scaffoldBackground,
       appBar: AppBar(
@@ -371,11 +368,11 @@ class _AppShellState extends State<AppShell> {
 
           IconButton(
             icon: Icon(
-              _isDarkMode ? Icons.wb_sunny_outlined : Icons.nights_stay_outlined,
+              isDarkMode ? Icons.wb_sunny_outlined : Icons.nights_stay_outlined,
               color: Colors.white,
             ),
             tooltip: 'Toggle theme',
-            onPressed: _onToggleTheme,
+            onPressed: () => context.read<ThemeProvider>().toggleTheme(),
           ),
 
           const SizedBox(width: 8),
