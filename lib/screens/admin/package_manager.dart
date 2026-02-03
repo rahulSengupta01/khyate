@@ -14,8 +14,10 @@ class _PackageManagerState extends State<PackageManager> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _numberOfClassesController = TextEditingController();
-  final _durationController = TextEditingController(); // Duration in days (number)
   final _searchController = TextEditingController();
+  
+  /// Duration: "daily" | "weekly" | "monthly" (required by API)
+  String? _selectedDuration = 'monthly';
   
   File? _selectedImage;
   List<dynamic> _packages = [];
@@ -23,8 +25,10 @@ class _PackageManagerState extends State<PackageManager> {
   int _page = 1;
   final int _limit = 10;
   
-  // Features list for the package
+  // Features list for the package (optional per API)
   final List<TextEditingController> _featureControllers = [TextEditingController()];
+  
+  static const List<String> _durationOptions = ['daily', 'weekly', 'monthly'];
 
   @override
   void initState() {
@@ -92,87 +96,59 @@ class _PackageManagerState extends State<PackageManager> {
 
 
   Future<void> _createPackage() async {
-    // Validate required fields
-    if (_nameController.text.isEmpty ||
-        _priceController.text.isEmpty ||
-        _durationController.text.isEmpty ||
-        _numberOfClassesController.text.isEmpty ||
-        _selectedImage == null) {
+    if (_nameController.text.trim().isEmpty ||
+        _priceController.text.trim().isEmpty ||
+        _numberOfClassesController.text.trim().isEmpty ||
+        _selectedDuration == null ||
+        _selectedDuration!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields')),
+        const SnackBar(content: Text('Please fill all required fields (name, price, number of classes, duration)')),
       );
       return;
     }
-
-    // Validate duration is a valid number
-    final duration = int.tryParse(_durationController.text);
-    if (duration == null || duration <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid duration in days')),
-      );
-      return;
-    }
-
-    // Validate price
-    final price = double.tryParse(_priceController.text);
+    final price = double.tryParse(_priceController.text.trim());
     if (price == null || price <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid price')),
       );
       return;
     }
-
-    // Validate number of classes
-    final classesIncluded = int.tryParse(_numberOfClassesController.text);
-    if (classesIncluded == null || classesIncluded <= 0) {
+    final numberOfClasses = int.tryParse(_numberOfClassesController.text.trim());
+    if (numberOfClasses == null || numberOfClasses <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid number of classes')),
       );
       return;
     }
-
-    // Validate features
     final features = _featureControllers
-        .map((controller) => controller.text.trim())
-        .where((text) => text.isNotEmpty)
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
         .toList();
-    
-    if (features.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one feature')),
-      );
-      return;
-    }
 
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       await _packageService.createPackage(
         image: _selectedImage,
-        name: _nameController.text,
-        features: features,
+        name: _nameController.text.trim(),
+        features: features.isEmpty ? null : features,
         price: price,
-        duration: duration, // Duration in days (number)
-        classesIncluded: classesIncluded, // API field name: classesIncluded
+        duration: _selectedDuration!,
+        numberOfClasses: numberOfClasses,
         isActive: true,
       );
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Package created successfully')),
         );
-        
-        // Reset form
         _nameController.clear();
         _priceController.clear();
         _numberOfClassesController.clear();
-        _durationController.clear();
-        _featureControllers.forEach((controller) => controller.dispose());
+        setState(() => _selectedDuration = 'monthly');
+        _featureControllers.forEach((c) => c.dispose());
         _featureControllers.clear();
         _featureControllers.add(TextEditingController());
-        setState(() {
-          _selectedImage = null;
-        });
+        setState(() => _selectedImage = null);
         _loadPackages();
       }
     } catch (e) {
@@ -204,15 +180,15 @@ class _PackageManagerState extends State<PackageManager> {
     _nameController.clear();
     _priceController.clear();
     _numberOfClassesController.clear();
-    _durationController.clear();
+    setState(() {
+      _selectedDuration = 'monthly';
+      _selectedImage = null;
+    });
     for (var controller in _featureControllers) {
       controller.dispose();
     }
     _featureControllers.clear();
     _featureControllers.add(TextEditingController());
-    setState(() {
-      _selectedImage = null;
-    });
   }
 
   Future<void> _pickImage() async {
@@ -541,10 +517,10 @@ class _PackageManagerState extends State<PackageManager> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
-                    TextField(
-                      controller: _durationController,
+                    DropdownButtonFormField<String>(
+                      value: _selectedDuration,
                       decoration: InputDecoration(
-                        labelText: 'Duration (Days) *',
+                        labelText: 'Duration *',
                         prefixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -562,7 +538,13 @@ class _PackageManagerState extends State<PackageManager> {
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       ),
-                      keyboardType: TextInputType.number,
+                      items: _durationOptions
+                          .map((d) => DropdownMenuItem(
+                                value: d,
+                                child: Text(d[0].toUpperCase() + d.substring(1)),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedDuration = v),
                     ),
                     const SizedBox(height: 16),
                     Container(
@@ -828,7 +810,7 @@ class _PackageManagerState extends State<PackageManager> {
                                       subtitle: Padding(
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(
-                                          'Price: AED ${package['price'] ?? 'N/A'}${package['duration'] != null ? ' • ${package['duration']} days' : ''}',
+                                          'Price: AED ${package['price'] ?? 'N/A'}${package['duration'] != null ? ' • ${package['duration']}' : ''}',
                                           style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
                                         ),
                                       ),
@@ -866,7 +848,6 @@ class _PackageManagerState extends State<PackageManager> {
     _nameController.dispose();
     _priceController.dispose();
     _numberOfClassesController.dispose();
-    _durationController.dispose();
     _searchController.dispose();
     for (var controller in _featureControllers) {
       controller.dispose();

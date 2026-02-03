@@ -26,6 +26,8 @@ class _TrainerManagerState extends State<TrainerManager> {
   final _emiratesIdController = TextEditingController();
   
   File? _selectedImage;
+  File? _idProofFile;
+  File? _certificatesFile;
   String? _selectedGender;
   String? _selectedExperience; // "EXPERIENCE" or "FRESHER"
   String? _selectedCountry;
@@ -109,48 +111,95 @@ class _TrainerManagerState extends State<TrainerManager> {
     }
   }
 
+  Future<void> _pickIdProof() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null && mounted) {
+      setState(() {
+        _idProofFile = File(picked.path);
+      });
+    }
+  }
+
+  Future<void> _pickCertificates() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null && mounted) {
+      setState(() {
+        _certificatesFile = File(picked.path);
+      });
+    }
+  }
+
   Future<void> _addTrainer() async {
-    if (_emailController.text.trim().isEmpty ||
-        _firstNameController.text.trim().isEmpty ||
-        _lastNameController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
-        _emiratesIdController.text.trim().isEmpty ||
+    // Capture values once so we send exactly what the user entered
+    final email = _emailController.text.trim();
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final phoneNumber = _phoneController.text.trim();
+    final password = _passwordController.text;
+    final address = _addressController.text.trim();
+    final specialization = _specializationController.text.trim();
+    final emiratesId = _emiratesIdController.text.trim();
+
+    if (email.isEmpty ||
+        firstName.isEmpty ||
+        lastName.isEmpty ||
+        phoneNumber.isEmpty ||
+        password.isEmpty ||
+        address.isEmpty ||
         _selectedGender == null ||
-        _selectedExperience == null ||
-        _addressController.text.trim().isEmpty ||
-        _ageController.text.trim().isEmpty ||
         _selectedCountry == null ||
         _selectedCity == null ||
-        _specializationController.text.trim().isEmpty ||
-        _experienceYearController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty) {
+        specialization.isEmpty ||
+        _selectedExperience == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields')),
+        const SnackBar(content: Text('Please fill all required fields.')),
       );
       return;
     }
+    final ageVal = int.tryParse(_ageController.text.trim());
+    if (ageVal == null || ageVal <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid Age.')),
+      );
+      return;
+    }
+    if (_idProofFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please upload Id Proof.')),
+      );
+      return;
+    }
+    if (_certificatesFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please upload Certificates.')),
+      );
+      return;
+    }
+    final expYearVal = int.tryParse(_experienceYearController.text.trim());
 
     setState(() => _isLoading = true);
     try {
       await _trainerService.createTrainer(
         profileImage: _selectedImage,
         profileImageUrl: null,
-        email: _emailController.text,
-        firstName: _firstNameController.text,
-        lastName: _lastNameController.text,
-        phoneNumber: _phoneController.text,
-        emiratesId: _emiratesIdController.text.trim().isEmpty 
-            ? 'TEMP-${DateTime.now().millisecondsSinceEpoch}' // Temporary ID if not provided
-            : _emiratesIdController.text.trim(),
-        gender: _selectedGender!,
-        address: _addressController.text,
-        age: int.parse(_ageController.text),
-        country: _selectedCountry!,
-        city: _selectedCity!,
-        specialization: _specializationController.text,
-        experience: _selectedExperience!,
-        experienceYear: int.parse(_experienceYearController.text),
-        password: _passwordController.text,
+        idProof: _idProofFile,
+        certificates: _certificatesFile,
+        email: email,
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: phoneNumber,
+        emiratesId: emiratesId.isEmpty ? null : emiratesId,
+        gender: _selectedGender,
+        address: address,
+        age: ageVal,
+        country: _selectedCountry,
+        city: _selectedCity,
+        specialization: specialization,
+        experience: _selectedExperience,
+        experienceYear: expYearVal,
+        password: password,
         serviceProvider: _selectedServiceProviders,
       );
       
@@ -169,6 +218,8 @@ class _TrainerManagerState extends State<TrainerManager> {
       _experienceYearController.clear();
       _passwordController.clear();
       _selectedImage = null;
+      _idProofFile = null;
+      _certificatesFile = null;
       _selectedGender = null;
       _selectedExperience = null;
       _selectedCountry = null;
@@ -597,6 +648,7 @@ class _TrainerManagerState extends State<TrainerManager> {
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 24),
+            // Add Photo / Upload Photo (matches website)
             GestureDetector(
               onTap: _pickImage,
               child: Container(
@@ -623,38 +675,29 @@ class _TrainerManagerState extends State<TrainerManager> {
                             ),
                             child: const Icon(Icons.add_photo_alternate, size: 48, color: Colors.blue),
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Tap to upload profile image',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
+                          const SizedBox(height: 8),
+                          const Text('Add Photo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87)),
+                          const SizedBox(height: 4),
+                          const Text('Upload Photo', style: TextStyle(fontSize: 14, color: Colors.grey)),
                         ],
                       ),
               ),
             ),
             const SizedBox(height: 24),
-            // Personal Information Section
-            _buildSectionHeader('Personal Information', Icons.person),
-            const SizedBox(height: 16),
-            _field(_emailController, "Email *", keyboardType: TextInputType.emailAddress, icon: Icons.email),
-            const SizedBox(height: 16),
+            // Field order matches website: First Name, Last Name, Email, Phone, Address, Gender, Age, Country, City, Password, Specialization, Id Proof, Certificates, Experience
             Row(
               children: [
-                Expanded(child: _field(_firstNameController, "First Name *", icon: Icons.badge)),
+                Expanded(child: _field(_firstNameController, "First Name *", icon: Icons.badge, hintText: 'Enter First Name')),
                 const SizedBox(width: 12),
-                Expanded(child: _field(_lastNameController, "Last Name *", icon: Icons.badge_outlined)),
+                Expanded(child: _field(_lastNameController, "Last Name *", icon: Icons.badge_outlined, hintText: 'Enter Last Name')),
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _field(_phoneController, "Phone Number *", keyboardType: TextInputType.phone, icon: Icons.phone)),
-              ],
-            ),
+            _field(_emailController, "Email *", keyboardType: TextInputType.emailAddress, icon: Icons.email, hintText: 'Enter Email'),
             const SizedBox(height: 16),
-            _field(_emiratesIdController, "Emirates ID *", keyboardType: TextInputType.text, icon: Icons.credit_card, hintText: 'e.g. 784-1990-1234567-1 (15 digits)'),
-            const SizedBox(height: 24),
-            _buildSectionHeader('Details', Icons.info),
+            _field(_phoneController, "Phone Number *", keyboardType: TextInputType.phone, icon: Icons.phone, hintText: 'Enter phone number with country code'),
+            const SizedBox(height: 16),
+            _field(_addressController, "Address *", icon: Icons.location_on, hintText: 'Enter Address'),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -667,59 +710,31 @@ class _TrainerManagerState extends State<TrainerManager> {
                       color: Colors.white,
                     ),
                     child: DropdownButtonFormField<String>(
-              value: _selectedGender,
-              decoration: const InputDecoration(
-                labelText: 'Gender *',
+                      value: _selectedGender,
+                      decoration: const InputDecoration(
+                        labelText: 'Gender *',
                         border: InputBorder.none,
                         prefixIcon: Icon(Icons.wc, color: Colors.grey),
-              ),
-              items: const [
+                      ),
+                      items: const [
                         DropdownMenuItem(value: 'Male', child: Text('Male')),
                         DropdownMenuItem(value: 'Female', child: Text('Female')),
                         DropdownMenuItem(value: 'Others', child: Text('Others')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedGender = value;
-                });
-              },
-            ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white,
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedExperience,
-              decoration: const InputDecoration(
-                        labelText: 'Experience *',
-                        border: InputBorder.none,
-                        prefixIcon: Icon(Icons.work_history, color: Colors.grey),
-              ),
-                      items: const [
-                        DropdownMenuItem(value: 'EXPERIENCE', child: Text('Experienced')),
-                        DropdownMenuItem(value: 'FRESHER', child: Text('Fresher')),
                       ],
                       onChanged: (value) {
                         setState(() {
-                          _selectedExperience = value;
+                          _selectedGender = value;
                         });
                       },
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _field(_ageController, "Age *", keyboardType: TextInputType.number, icon: Icons.cake, hintText: 'Enter age'),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            _field(_addressController, "Address *", icon: Icons.location_on),
-            const SizedBox(height: 16),
-            _field(_ageController, "Age *", keyboardType: TextInputType.number, icon: Icons.cake),
             const SizedBox(height: 16),
             // Country Dropdown with Search
             _countries.isEmpty
@@ -739,7 +754,7 @@ class _TrainerManagerState extends State<TrainerManager> {
                     ),
                   )
                 : SearchableDropdown<Map<String, dynamic>>(
-                    label: 'Country',
+                    label: 'Country *',
                     value: _selectedCountry,
                     items: _countries.map((c) => c as Map<String, dynamic>).toList(),
                     displayText: (country) => country['name']?.toString() ?? 'Unknown',
@@ -780,7 +795,7 @@ class _TrainerManagerState extends State<TrainerManager> {
                         ),
                       )
                     : SearchableDropdown<Map<String, dynamic>>(
-                        label: 'City',
+                        label: 'City *',
                     value: _selectedCity,
                         items: _cities.map((c) => c as Map<String, dynamic>).toList(),
                         displayText: (city) => city['name']?.toString() ?? 'Unknown',
@@ -797,11 +812,53 @@ class _TrainerManagerState extends State<TrainerManager> {
                         prefixIcon: Icons.location_city,
                   ),
             const SizedBox(height: 24),
-            _buildSectionHeader('Professional Information', Icons.business_center),
+            _field(_passwordController, "Password *", obscureText: true, icon: Icons.lock_outline, hintText: 'Enter your password'),
             const SizedBox(height: 16),
-            _field(_specializationController, "Specialization *", icon: Icons.fitness_center),
+            _field(_specializationController, "Specialization *", icon: Icons.fitness_center, hintText: 'Enter Specialization'),
             const SizedBox(height: 16),
-            _field(_experienceYearController, "Experience Year *", keyboardType: TextInputType.number, icon: Icons.calendar_today),
+            // Id Proof * (file)
+            _buildFileUploadRow(
+              label: 'Id Proof *',
+              file: _idProofFile,
+              onTap: _pickIdProof,
+              icon: Icons.badge_outlined,
+            ),
+            const SizedBox(height: 16),
+            // Certificates * (file)
+            _buildFileUploadRow(
+              label: 'Certificates *',
+              file: _certificatesFile,
+              onTap: _pickCertificates,
+              icon: Icons.card_membership,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+              ),
+              child: DropdownButtonFormField<String>(
+                value: _selectedExperience,
+                decoration: const InputDecoration(
+                  labelText: 'Experience *',
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.work_history, color: Colors.grey),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'EXPERIENCE', child: Text('Experienced')),
+                  DropdownMenuItem(value: 'FRESHER', child: Text('Fresher')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedExperience = value;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            _field(_experienceYearController, "Experience Year", keyboardType: TextInputType.number, icon: Icons.calendar_today),
             const SizedBox(height: 16),
             // Service Providers Multi-select
             Container(
@@ -856,10 +913,6 @@ class _TrainerManagerState extends State<TrainerManager> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            _buildSectionHeader('Account Security', Icons.lock),
-            const SizedBox(height: 16),
-            _field(_passwordController, "Password *", obscureText: true, icon: Icons.lock_outline),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -889,6 +942,58 @@ class _TrainerManagerState extends State<TrainerManager> {
             ),
           ],
         ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileUploadRow({
+    required String label,
+    required File? file,
+    required VoidCallback onTap,
+    IconData icon = Icons.attach_file,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.grey.shade600, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    file != null ? file.path.split(RegExp(r'[/\\]')).last : 'No file chosen',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: file != null ? Colors.black87 : Colors.grey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.upload_file, color: Colors.grey.shade500),
+          ],
         ),
       ),
     );
