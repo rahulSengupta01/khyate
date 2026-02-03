@@ -110,20 +110,20 @@ class _TrainerManagerState extends State<TrainerManager> {
   }
 
   Future<void> _addTrainer() async {
-    if (_emailController.text.isEmpty ||
-        _firstNameController.text.isEmpty ||
-        _lastNameController.text.isEmpty ||
-        _phoneController.text.isEmpty ||
-      _emiratesIdController.text.isEmpty ||
+    if (_emailController.text.trim().isEmpty ||
+        _firstNameController.text.trim().isEmpty ||
+        _lastNameController.text.trim().isEmpty ||
+        _phoneController.text.trim().isEmpty ||
+        _emiratesIdController.text.trim().isEmpty ||
         _selectedGender == null ||
         _selectedExperience == null ||
-        _addressController.text.isEmpty ||
-        _ageController.text.isEmpty ||
+        _addressController.text.trim().isEmpty ||
+        _ageController.text.trim().isEmpty ||
         _selectedCountry == null ||
         _selectedCity == null ||
-        _specializationController.text.isEmpty ||
-        _experienceYearController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+        _specializationController.text.trim().isEmpty ||
+        _experienceYearController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all required fields')),
       );

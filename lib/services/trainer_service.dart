@@ -41,6 +41,7 @@ class TrainerService {
         'first_name': firstName.trim(),
         'phone_number': phoneNumber.trim(),
         'emirates_id': effectiveEmiratesId,
+        'emiratesId': effectiveEmiratesId,
         'password': password,
       };
       
