@@ -7,105 +7,95 @@ class TrainerService {
   static const String baseUrl = AppConfig.baseUrl;
   
   // 5.1 Create Trainer
+  // POST /api/v1/trainer/create-trainer (multipart/form-data)
+  // Required: email, first_name, emirates_id, phone_number, password
+  // Optional: last_name, gender, address, age, country (ObjectId), city (ObjectId),
+  //           specialization, experience (free text), experienceYear, serviceProvider (JSON array string)
+  // Optional files: profile_image, id_proof, certificate (one each)
   Future<Map<String, dynamic>?> createTrainer({
     File? profileImage,
-    String? profileImageUrl,
+    File? idProof,
+    File? certificate,
     required String email,
     required String firstName,
-    required String lastName,
+    String? lastName,
     required String phoneNumber,
     required String emiratesId,
-    required String gender,
-    required String address,
-    required int age,
-    required String country,
-    required String city,
-    required String specialization,
-    required String experience,
-    required int experienceYear,
+    String? gender,
+    String? address,
+    int? age,
+    String? country,
+    String? city,
+    String? specialization,
+    String? experience,
+    int? experienceYear,
     required String password,
-    required List<String> serviceProvider,
+    List<String>? serviceProvider,
   }) async {
     try {
-      // Build fields map - trim all string fields and ensure proper formatting
-      // Gender must be: "Male", "Female", "Others" (capitalized)
-      // Experience must be: "EXPERIENCE" or "FRESHER"
-      // User enters a single Emirates ID in the form; we send that one value under the backend's expected key(s).
       final trimmedEmiratesId = emiratesId.trim();
-      final effectiveEmiratesId = trimmedEmiratesId.isEmpty
-          ? 'TEMP-${DateTime.now().millisecondsSinceEpoch}'
+      if (trimmedEmiratesId.isEmpty) {
+        throw Exception('Emirates ID is required');
+      }
+      // API: max 20 chars for emirates_id; send as-is (with or without dashes)
+      final emiratesIdValue = trimmedEmiratesId.length > 20
+          ? trimmedEmiratesId.substring(0, 20)
           : trimmedEmiratesId;
 
       final fields = <String, dynamic>{
         'email': email.trim(),
         'first_name': firstName.trim(),
         'phone_number': phoneNumber.trim(),
-        'emirates_id': effectiveEmiratesId,
         'password': password,
+        'emirates_id': emiratesIdValue,
       };
-      
-      // Fix gender to match enum: "Male", "Female", "Others"
-      String normalizedGender = gender.trim();
-      if (normalizedGender.toLowerCase() == 'male') {
-        normalizedGender = 'Male';
-      } else if (normalizedGender.toLowerCase() == 'female') {
-        normalizedGender = 'Female';
-      } else if (normalizedGender.toLowerCase() == 'other' || normalizedGender.toLowerCase() == 'others') {
-        normalizedGender = 'Others';
-      }
-      
-      // Fix experience to match enum: "EXPERIENCE" or "FRESHER"
-      String normalizedExperience = experience.trim().toUpperCase();
-      if (normalizedExperience == 'YES' || normalizedExperience == 'EXPERIENCED' || normalizedExperience == 'HAS EXPERIENCE') {
-        normalizedExperience = 'EXPERIENCE';
-      } else if (normalizedExperience == 'NO' || normalizedExperience == 'FRESH' || normalizedExperience == 'NEW') {
-        normalizedExperience = 'FRESHER';
-      }
-      
-      // Add optional fields - send them if provided (backend handles undefined)
-      if (lastName.trim().isNotEmpty) {
+      if (lastName != null && lastName.trim().isNotEmpty) {
         fields['last_name'] = lastName.trim();
       }
-      if (normalizedGender.isNotEmpty) {
-        fields['gender'] = normalizedGender;
+      if (gender != null && gender.trim().isNotEmpty) {
+        String g = gender.trim();
+        if (g.toLowerCase() == 'male') g = 'Male';
+        else if (g.toLowerCase() == 'female') g = 'Female';
+        else if (g.toLowerCase() == 'other' || g.toLowerCase() == 'others') g = 'Others';
+        fields['gender'] = g;
       }
-      if (address.trim().isNotEmpty) {
+      if (address != null && address.trim().isNotEmpty) {
         fields['address'] = address.trim();
       }
-      if (age > 0) {
+      if (age != null && age > 0) {
         fields['age'] = age.toString();
       }
-      if (country.trim().isNotEmpty) {
+      if (country != null && country.trim().isNotEmpty) {
         fields['country'] = country.trim();
       }
-      if (city.trim().isNotEmpty) {
+      if (city != null && city.trim().isNotEmpty) {
         fields['city'] = city.trim();
       }
-      if (specialization.trim().isNotEmpty) {
+      if (specialization != null && specialization.trim().isNotEmpty) {
         fields['specialization'] = specialization.trim();
       }
-      if (normalizedExperience.isNotEmpty) {
-        fields['experience'] = normalizedExperience;
+      // Backend expects enum: EXPERIENCE | FRESHER
+      if (experience != null && experience.trim().isNotEmpty) {
+        final v = experience.trim().toUpperCase();
+        if (v == 'EXPERIENCE' || v == 'FRESHER') {
+          fields['experience'] = v;
+        }
       }
-      // Many backends expect FRESHER to have 0 experience years; send 0 to avoid 400 validation
-      final effectiveExperienceYear = normalizedExperience == 'FRESHER' ? 0 : experienceYear;
-      if (effectiveExperienceYear >= 0) {
-        fields['experienceYear'] = effectiveExperienceYear.toString();
+      if (experienceYear != null && experienceYear >= 0) {
+        fields['experienceYear'] = experienceYear.toString();
       }
-      
-      // Handle serviceProvider - send as JSON string (empty array is valid). Backend may parse with JSON.parse().
-      fields['serviceProvider'] = jsonEncode(serviceProvider);
-      
-      if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-        fields['profileImageUrl'] = profileImageUrl;
-      }
-      
-      final files = profileImage != null ? {'profile_image': profileImage} : null;
+      fields['serviceProvider'] = jsonEncode(serviceProvider ?? []);
+
+      final files = <String, File>{};
+      if (profileImage != null) files['profile_image'] = profileImage;
+      if (idProof != null) files['id_proof'] = idProof;
+      if (certificate != null) files['certificate'] = certificate;
+      final filesMap = files.isEmpty ? null : files;
       
       final response = await ApiService.postMultipart(
         '$baseUrl/trainer/create-trainer',
         fields,
-        files: files,
+        files: filesMap,
         requireAuth: true,
       );
       

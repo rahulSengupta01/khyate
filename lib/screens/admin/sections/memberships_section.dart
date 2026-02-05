@@ -35,7 +35,7 @@ class _MembershipsSectionState extends State<MembershipsSection> with SingleTick
         TabBar(
           controller: _tabController,
           labelColor: AdminTheme.primary,
-          unselectedLabelColor: AdminTheme.textSecondary,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           tabs: const [
             Tab(text: 'Programs'),
             Tab(text: 'Membership'),

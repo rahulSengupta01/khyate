@@ -267,7 +267,7 @@ class _RatingsSectionState extends State<RatingsSection> with SingleTickerProvid
                   Text((r['reviews'] ?? '0').toString()),
                   Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: List.generate(5, (j) => Icon(Icons.star, size: 16, color: j < ((r['rating'] ?? 0) as num).toInt() ? AdminTheme.warning : Colors.grey)),
+                    children: List.generate(5, (j) => Icon(Icons.star, size: 16, color: j < ((r['rating'] ?? 0) as num).toInt() ? AdminTheme.warning : Theme.of(context).colorScheme.outline)),
                   ),
                   Text((r['specialization'] ?? '').toString()),
                   TextButton(
@@ -288,7 +288,7 @@ class _RatingsSectionState extends State<RatingsSection> with SingleTickerProvid
                   Text((r['reviews'] ?? '0').toString()),
                   Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: List.generate(5, (j) => Icon(Icons.star, size: 16, color: j < ((r['rating'] ?? 0) as num).toInt() ? AdminTheme.warning : Colors.grey)),
+                    children: List.generate(5, (j) => Icon(Icons.star, size: 16, color: j < ((r['rating'] ?? 0) as num).toInt() ? AdminTheme.warning : Theme.of(context).colorScheme.outline)),
                   ),
                   TextButton(
                     onPressed: () => _showMembershipReviewDetails(r),
@@ -386,7 +386,7 @@ class _ReviewDetailsSheetState extends State<_ReviewDetailsSheet> {
                     children: [
                       Row(
                         children: [
-                          ...List.generate(5, (j) => Icon(Icons.star, size: 18, color: j < rating.toInt() ? AdminTheme.warning : Colors.grey)),
+                          ...List.generate(5, (j) => Icon(Icons.star, size: 18, color: j < rating.toInt() ? AdminTheme.warning : Theme.of(context).colorScheme.outline)),
                           const SizedBox(width: 8),
                           if (isHidden) Chip(label: Text('Hidden', style: TextStyle(fontSize: 12, color: AdminTheme.error))),
                         ],
@@ -429,12 +429,13 @@ class _ReviewDetailsSheetState extends State<_ReviewDetailsSheet> {
         title: const Text('Admin reply'),
         content: TextField(
           controller: c,
-          decoration: const InputDecoration(hintText: 'Enter reply'),
+          decoration: AdminTheme.inputDecoration(context, hintText: 'Enter reply'),
           maxLines: 3,
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
+            style: AdminTheme.primaryButtonStyle,
             onPressed: () async {
               final reply = c.text.trim();
               if (reply.isEmpty) return;

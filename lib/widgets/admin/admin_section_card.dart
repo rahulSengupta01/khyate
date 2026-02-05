@@ -17,10 +17,22 @@ class AdminSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: AdminTheme.elevationCard,
-      shape: RoundedRectangleBorder(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AdminTheme.cardBgDark : AdminTheme.cardBgTint;
+    final borderColor = isDark ? AdminTheme.borderDark : AdminTheme.primary.withOpacity(0.2);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
         borderRadius: BorderRadius.circular(AdminTheme.radiusCard),
+        border: Border.all(color: borderColor, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: padding ?? const EdgeInsets.all(20),
@@ -35,13 +47,27 @@ class AdminSectionCard extends StatelessWidget {
                   children: [
                     if (title != null)
                       Expanded(
-                        child: Text(
-                          title!,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: AdminTheme.primary,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              title!,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).colorScheme.onSurface,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     if (action != null) action!,

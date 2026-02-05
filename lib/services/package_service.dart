@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'api_service.dart';
 import '../config/app_config.dart';
@@ -6,7 +7,8 @@ class PackageService {
   static const String baseUrl = AppConfig.baseUrl;
   
   // 15.1 Create Package
-  // API Documentation: duration is a number (days), classesIncluded is the field name
+  // POST /api/v1/package/create-package (multipart)
+  // duration: "daily" | "weekly" | "monthly"; numberOfClasses (required); features optional
   Future<Map<String, dynamic>?> createPackage({
     File? image,
     String? imageUrl,
@@ -14,43 +16,30 @@ class PackageService {
     String? description,
     List<String>? features,
     required double price,
-    required int duration, // Duration in days (number, not enum)
-    required int classesIncluded, // Field name from API: classesIncluded
+    required String duration, // "daily" | "weekly" | "monthly"
+    required int numberOfClasses,
     required bool isActive,
   }) async {
     try {
-      // Combine features into description if provided, or use description
-      String finalDescription = description ?? '';
-      if (features != null && features.isNotEmpty) {
-        final featuresText = features.join('\n• ');
-        finalDescription = finalDescription.isEmpty 
-            ? '• $featuresText' 
-            : '$finalDescription\n• $featuresText';
-      }
-      
       final fields = <String, dynamic>{
         'name': name,
         'price': price.toString(),
-        'duration': duration.toString(), // API expects number (days)
-        'classesIncluded': classesIncluded.toString(), // API field name: classesIncluded
+        'numberOfClasses': numberOfClasses.toString(),
+        'duration': duration,
         'isActive': isActive.toString(),
       };
-      
-      // Only add description if it's not empty
-      if (finalDescription.isNotEmpty) {
-        fields['description'] = finalDescription;
+      if (description != null && description.trim().isNotEmpty) {
+        fields['description'] = description.trim();
       }
-      
-      // Only add imageUrl if provided
+      if (features != null && features.isNotEmpty) {
+        fields['features'] = jsonEncode(features);
+      }
       if (imageUrl != null && imageUrl.isNotEmpty) {
         fields['imageUrl'] = imageUrl;
       }
-      
       final files = image != null ? {'image': image} : null;
-      
       print('Creating package with fields: $fields');
       print('Image file: ${image?.path}');
-      
       final response = await ApiService.postMultipart(
         '$baseUrl/package/create-package',
         fields,

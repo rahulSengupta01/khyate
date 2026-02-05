@@ -396,19 +396,22 @@ class _FitnessScreenState extends State<FitnessScreen> {
                           future: getTrainers(),
                           builder: (context, snapshot) {
                             final trainers = snapshot.data ?? [];
+                            final onSurface = Theme.of(context).colorScheme.onSurface;
                             return DropdownButton<String>(
                               hint: Text(
                                 "Select Trainer",
-                                style: GoogleFonts.inter(),
+                                style: GoogleFonts.inter(color: onSurface),
                               ),
                               value: selectedTrainer,
                               isExpanded: true,
+                              dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              style: GoogleFonts.inter(color: onSurface),
                               items: trainers
                                   .map((trainer) => DropdownMenuItem(
                                         value: trainer,
                                         child: Text(
                                           trainer,
-                                          style: GoogleFonts.inter(),
+                                          style: GoogleFonts.inter(color: onSurface),
                                         ),
                                       ))
                                   .toList(),
@@ -443,7 +446,7 @@ class _FitnessScreenState extends State<FitnessScreen> {
                               selectedDate == null
                                   ? "Any date"
                                   : "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}",
-                              style: GoogleFonts.inter(),
+                              style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface),
                             ),
                           ],
                         ),
@@ -456,7 +459,7 @@ class _FitnessScreenState extends State<FitnessScreen> {
                       ),
                       Text(
                         "Future",
-                        style: GoogleFonts.inter(),
+                        style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ],
                   ),
@@ -541,6 +544,7 @@ TodaysClassesList(
                             onTap: () {
                               MembershipModal.show(context, card, widget.isDarkMode);
                             },
+                            cardBackgroundColor: widget.isDarkMode ? const Color(0xFF1E293B) : null,
                           ),
                         )
                         .toList(),

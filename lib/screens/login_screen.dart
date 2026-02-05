@@ -159,9 +159,11 @@ void _showForgotPasswordDialog(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final logoColor = const Color(0xFF20C8B1);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: SingleChildScrollView(
@@ -710,6 +712,7 @@ void _showForgotPasswordDialog(BuildContext context) {
           ),
         ),
       ),
+    ),
     );
   }
 }

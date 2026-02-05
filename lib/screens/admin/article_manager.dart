@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/admin_service.dart';
 import '../../services/api_service.dart';
+import '../../widgets/admin/admin_theme.dart';
 
 class ArticleManager extends StatefulWidget {
   @override
@@ -82,20 +83,71 @@ class _ArticleManagerState extends State<ArticleManager> {
                   child: Container(
                     height: 150,
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: AdminTheme.uploadSectionDecoration(context),
                     child: editImage != null
-                        ? Image.file(editImage!, fit: BoxFit.cover)
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.file(editImage!, fit: BoxFit.cover),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Material(
+                                  color: AdminTheme.editOverlayColor(context),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                    onPressed: () async {
+                                      final picker = ImagePicker();
+                                      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                      if (pickedFile != null) {
+                                        setDialogState(() {
+                                          editImage = File(pickedFile.path);
+                                          editImageUrl = null;
+                                        });
+                                      }
+                                    },
+                                    padding: const EdgeInsets.all(6),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
                         : editImageUrl != null
-                            ? Image.network(editImageUrl!, fit: BoxFit.cover)
-                            : const Column(
+                            ? Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(editImageUrl!, fit: BoxFit.cover),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Material(
+                                      color: AdminTheme.editOverlayColor(context),
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                        onPressed: () async {
+                                          final picker = ImagePicker();
+                                          final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                          if (pickedFile != null) {
+                                            setDialogState(() {
+                                              editImage = File(pickedFile.path);
+                                              editImageUrl = null;
+                                            });
+                                          }
+                                        },
+                                        padding: const EdgeInsets.all(6),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add_photo_alternate, size: 48),
-                                  SizedBox(height: 8),
-                                  Text('Tap to select image'),
+                                  Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                  const SizedBox(height: 8),
+                                  Text('Tap to select image', style: TextStyle(color: AdminTheme.fieldTextMuted(context))),
                                 ],
                               ),
                   ),
@@ -103,18 +155,12 @@ class _ArticleManagerState extends State<ArticleManager> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: editTitleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Title'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: editDescriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Description'),
                   maxLines: 5,
                 ),
               ],
@@ -227,18 +273,33 @@ class _ArticleManagerState extends State<ArticleManager> {
                     child: Container(
                       height: 150,
                       width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      decoration: AdminTheme.uploadSectionDecoration(context),
                       child: _selectedImage != null
-                          ? Image.file(_selectedImage!, fit: BoxFit.cover)
-                          : const Column(
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.file(_selectedImage!, fit: BoxFit.cover),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Material(
+                                    color: AdminTheme.editOverlayColor(context),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                      onPressed: _pickImage,
+                                      padding: const EdgeInsets.all(6),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_photo_alternate, size: 48),
-                                SizedBox(height: 8),
-                                Text('Tap to upload image'),
+                                Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                const SizedBox(height: 8),
+                                Text('Tap to upload image', style: TextStyle(color: AdminTheme.fieldTextMuted(context))),
                               ],
                             ),
                     ),
@@ -246,18 +307,12 @@ class _ArticleManagerState extends State<ArticleManager> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Title *',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Title *'),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description (Optional)',
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Description (Optional)'),
                     maxLines: 5,
                   ),
                   const SizedBox(height: 16),

@@ -11,6 +11,11 @@ class SearchableDropdown<T> extends StatefulWidget {
   final String? hintText;
   final bool isRequired;
   final IconData? prefixIcon;
+  /// When set, the trigger box uses this decoration (e.g. admin dark blue).
+  final BoxDecoration? decoration;
+  /// When set, label and value use these styles (e.g. admin field text).
+  final TextStyle? labelStyle;
+  final TextStyle? valueStyle;
 
   const SearchableDropdown({
     super.key,
@@ -23,6 +28,9 @@ class SearchableDropdown<T> extends StatefulWidget {
     this.hintText,
     this.isRequired = false,
     this.prefixIcon,
+    this.decoration,
+    this.labelStyle,
+    this.valueStyle,
   });
 
   @override
@@ -78,9 +86,11 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
     _searchController.clear();
     _filteredItems = List<T>.from(widget.items);
     
+    final scheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
+        backgroundColor: scheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
           constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
@@ -95,20 +105,21 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                     Expanded(
                       child: Text(
                         widget.label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: scheme.onSurface,
                         ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close, color: scheme.onSurface),
+                      onPressed: () => Navigator.pop(dialogContext),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
+              Divider(height: 1, color: scheme.outlineVariant),
               // Search field
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -116,12 +127,12 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Search ${widget.label.toLowerCase()}...',
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: Icon(Icons.search, color: scheme.onSurfaceVariant),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: scheme.surfaceContainerHighest,
                   ),
                   onChanged: _filterItems,
                   autofocus: true,
@@ -130,9 +141,9 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
               // List of items
               Flexible(
                 child: _filteredItems.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Text('No items found'),
+                    ? Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Text('No items found', style: TextStyle(color: scheme.onSurfaceVariant)),
                       )
                     : ListView.builder(
                         shrinkWrap: true,
@@ -148,17 +159,17 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                             }
                             final itemValue = widget.getValue(item);
                             final isSelected = widget.value != null && widget.value == itemValue;
-                            
+
                             return ListTile(
                               title: Text(
                                 widget.displayText(item),
-                                style: const TextStyle(fontSize: 16),
+                                style: TextStyle(fontSize: 16, color: scheme.onSurface),
                               ),
                               selected: isSelected,
-                              selectedTileColor: Colors.blue.shade50,
+                              selectedTileColor: scheme.primaryContainer,
                               leading: isSelected
-                                  ? const Icon(Icons.check_circle, color: Colors.blue, size: 24)
-                                  : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 24),
+                                  ? Icon(Icons.check_circle, color: scheme.primary, size: 24)
+                                  : Icon(Icons.radio_button_unchecked, color: scheme.onSurfaceVariant, size: 24),
                               onTap: () {
                                 final value = widget.getValue(item);
                                 if (value.isNotEmpty) {
@@ -172,7 +183,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                           } catch (e) {
                             print('Error in searchable dropdown item: $e');
                             return ListTile(
-                              title: Text('Error loading item', style: TextStyle(color: Colors.red.shade700)),
+                              title: Text('Error loading item', style: TextStyle(color: scheme.error)),
                               enabled: false,
                             );
                           }
@@ -214,19 +225,40 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
         ? widget.displayText(selectedItem!)
         : widget.hintText ?? 'Select ${widget.label}';
 
+    final scheme = Theme.of(context).colorScheme;
+    final surface = scheme.surfaceContainerHighest;
+    final borderColor = scheme.outline;
+    final labelColor = scheme.onSurfaceVariant;
+    final valueColor = scheme.onSurface;
+
+    final boxDecoration = widget.decoration ??
+        BoxDecoration(
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(8),
+          color: surface,
+        );
+    final effectiveLabelStyle = widget.labelStyle ??
+        TextStyle(
+          fontSize: 12,
+          color: labelColor,
+          fontWeight: FontWeight.w500,
+        );
+    final effectiveValueStyle = widget.valueStyle ??
+        TextStyle(
+          fontSize: 16,
+          color: widget.value != null ? valueColor : labelColor,
+        );
+    final iconColor = widget.labelStyle?.color ?? labelColor;
+
     return InkWell(
       onTap: _showSearchDialog,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade400),
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.white,
-        ),
+        decoration: boxDecoration,
         child: Row(
           children: [
             if (widget.prefixIcon != null) ...[
-              Icon(widget.prefixIcon, color: Colors.grey.shade600),
+              Icon(widget.prefixIcon, color: iconColor),
               const SizedBox(width: 12),
             ],
             Expanded(
@@ -235,24 +267,17 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                 children: [
                   Text(
                     widget.label + (widget.isRequired ? ' *' : ''),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: effectiveLabelStyle,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     displayValue,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: widget.value != null ? Colors.black87 : Colors.grey.shade600,
-                    ),
+                    style: effectiveValueStyle,
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+            Icon(Icons.arrow_drop_down, color: iconColor),
           ],
         ),
       ),
