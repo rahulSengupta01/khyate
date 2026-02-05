@@ -45,7 +45,9 @@ class AdminModalForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSmall = MediaQuery.of(context).size.width < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Dialog(
+      backgroundColor: isDark ? AdminTheme.cardBgDark : AdminTheme.cardBgTint,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AdminTheme.radiusCard),
       ),
@@ -64,10 +66,10 @@ class AdminModalForm extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AdminTheme.textPrimary,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),

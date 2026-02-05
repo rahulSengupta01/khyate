@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_service.dart';
 import '../../services/master_data_service.dart';
+import '../../widgets/admin/admin_theme.dart';
 
 class PlannerDashboardScreen extends StatefulWidget {
   const PlannerDashboardScreen({super.key});
@@ -113,7 +114,7 @@ class _PlannerDashboardScreenState extends State<PlannerDashboardScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
+                          border: Border.all(color: Theme.of(context).colorScheme.outline),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -132,10 +133,7 @@ class _PlannerDashboardScreenState extends State<PlannerDashboardScreen> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: _selectedSubServiceId,
-                      decoration: const InputDecoration(
-                        labelText: 'Sub Service (Optional)',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: AdminTheme.inputDecoration(context, labelText: 'Sub Service (Optional)'),
                       items: _subServices.map((subService) {
                         return DropdownMenuItem<String>(
                           value: subService['_id']?.toString() ?? subService['id']?.toString(),

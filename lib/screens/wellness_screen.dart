@@ -598,6 +598,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
                             onTap: () {
                               MembershipModal.show(context, card, widget.isDarkMode);
                             },
+                            cardBackgroundColor: widget.isDarkMode ? const Color(0xFF1E293B) : null,
                           ),
                         )
                         .toList(),

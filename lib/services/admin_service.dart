@@ -3,9 +3,10 @@ import 'api_service.dart';
 import '../config/app_config.dart';
 
 class AdminService {
-  static const String baseUrl = AppConfig.adminBaseUrl;
-  
-  // 6.1 Create Promo Code
+  /// All admin endpoints use [AppConfig.baseUrl].
+  static String get _baseUrl => AppConfig.baseUrl;
+
+  // 6.1 Create Promo Code — POST multipart
   Future<Map<String, dynamic>?> createPromoCode({
     File? image,
     String? imageUrl,
@@ -24,9 +25,12 @@ class AdminService {
     double? maxDiscountAmount,
   }) async {
     try {
+      final type = discountType.trim().isEmpty
+          ? 'Percentage'
+          : (discountType.trim().toLowerCase() == 'percentage' ? 'Percentage' : discountType.trim());
       final fields = <String, dynamic>{
         'code': code,
-        'discountType': discountType,
+        'discountType': type,
         'discountValue': discountValue.toString(),
         'maxUses': maxUses.toString(),
         'termsAndConditions': termsAndConditions,
@@ -44,18 +48,25 @@ class AdminService {
       final files = image != null ? {'image': image} : null;
       
       final response = await ApiService.postMultipart(
-        '$baseUrl/admin/create-promo-code',
+        '$_baseUrl/admin/create-promo-code',
         fields,
         files: files,
         requireAuth: true,
       );
-      
-      if (response['success'] == true) {
-        return response['data'];
-      } else {
-        throw Exception(response['error'] ?? 'Failed to create promo code');
+
+      final success = response['success'] == true;
+      if (success) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) return data;
+        if (data is Map) return Map<String, dynamic>.from(data);
+        return <String, dynamic>{};
       }
+      final err = response['error'];
+      final msg = err is String ? err : err?.toString() ?? 'Failed to create promo code';
+      final statusCode = response['statusCode'];
+      throw Exception(statusCode != null ? '$msg (HTTP $statusCode)' : msg);
     } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('Create promo code error: ${e.toString()}');
     }
   }
@@ -82,7 +93,10 @@ class AdminService {
     try {
       final fields = <String, dynamic>{};
       if (code != null) fields['code'] = code;
-      if (discountType != null) fields['discountType'] = discountType;
+      if (discountType != null) {
+        final t = discountType!.trim();
+        fields['discountType'] = t.isEmpty ? 'Percentage' : (t.toLowerCase() == 'percentage' ? 'Percentage' : t);
+      }
       if (discountValue != null) fields['discountValue'] = discountValue.toString();
       if (description != null) fields['description'] = description;
       if (isActive != null) fields['isActive'] = isActive.toString();
@@ -99,7 +113,7 @@ class AdminService {
       final files = image != null ? {'image': image} : null;
       
       final response = await ApiService.putMultipart(
-        '$baseUrl/admin/update-promo-code/$promoCodeId',
+        '$_baseUrl/admin/update-promo-code/$promoCodeId',
         fields,
         files: files,
         requireAuth: true,
@@ -108,7 +122,9 @@ class AdminService {
       if (response['success'] == true) {
         return response['data'];
       } else {
-        throw Exception(response['error'] ?? 'Failed to update promo code');
+        final err = response['error'] ?? 'Failed to update promo code';
+        final code = response['statusCode'];
+        throw Exception(code != null ? '$err (HTTP $code)' : err);
       }
     } catch (e) {
       throw Exception('Update promo code error: ${e.toString()}');
@@ -121,7 +137,7 @@ class AdminService {
   }) async {
     try {
       final response = await ApiService.get(
-        '$baseUrl/admin/get-promo-code-by-id/$promoCodeId',
+        '$_baseUrl/admin/get-promo-code-by-id/$promoCodeId',
         requireAuth: true,
       );
       
@@ -135,42 +151,56 @@ class AdminService {
     }
   }
   
-  // 6.4 Get All Promo Codes
-  Future<Map<String, dynamic>?> getAllPromoCodes() async {
-    try {
-      // API spec says POST with no request body required
-      final response = await ApiService.post(
-        '$baseUrl/admin/get-all-promo-codes',
-        {},
-        requireAuth: true,
-      );
-      
-      if (response['success'] == true) {
-        return response['data'];
-      } else {
-        throw Exception(response['error'] ?? 'Failed to get promo codes');
-      }
-    } catch (e) {
-      throw Exception('Get promo codes error: ${e.toString()}');
+  // 6.4 List (get all) promo codes
+  Future<Map<String, dynamic>> getAllPromoCodes() async {
+    const endpointSuffix = '/admin/get-all-promo-codes';
+    final endpoint = '$_baseUrl$endpointSuffix';
+    Map<String, dynamic> response = await ApiService.post(endpoint, <String, dynamic>{}, requireAuth: true);
+    final statusCode = response['statusCode'];
+    if (response['success'] != true && statusCode == 405) {
+      response = await ApiService.get(endpoint, requireAuth: true);
     }
+    if (response['success'] != true) {
+      final err = response['error'];
+      final msg = err is String ? err : err?.toString() ?? 'Failed to load promo codes';
+      final code = response['statusCode'];
+      throw Exception(code != null ? '$msg (HTTP $code)' : msg);
+    }
+    dynamic raw = response['data'];
+    if (raw == null) return <String, dynamic>{'promoCodes': <dynamic>[]};
+    if (raw is Map && raw['data'] != null) raw = raw['data'];
+    if (raw is List) return <String, dynamic>{'promoCodes': List<dynamic>.from(raw)};
+    if (raw is Map) {
+      final map = Map<String, dynamic>.from(raw as Map);
+      final inner = map['data'];
+      if (inner is Map && map['promoCodes'] == null && inner['promoCodes'] != null) {
+        return <String, dynamic>{'promoCodes': List<dynamic>.from(inner['promoCodes'] as List)};
+      }
+      if (map['promoCodes'] is List) return map;
+      if (inner is List) return <String, dynamic>{'promoCodes': List<dynamic>.from(inner)};
+      if (map['data'] is List) return <String, dynamic>{'promoCodes': List<dynamic>.from(map['data'] as List)};
+      return map;
+    }
+    return <String, dynamic>{'promoCodes': <dynamic>[]};
   }
   
   // 6.5 Delete Promo Code
-  Future<Map<String, dynamic>?> deletePromoCode({
-    required String promoCodeId,
-  }) async {
+  Future<void> deletePromoCode({required String promoCodeId}) async {
+    if (promoCodeId.trim().isEmpty) {
+      throw Exception('Promo code ID is required');
+    }
     try {
       final response = await ApiService.delete(
-        '$baseUrl/admin/delete-promo-code/$promoCodeId',
+        '$_baseUrl/admin/delete-promo-code/$promoCodeId',
         requireAuth: true,
       );
-      
-      if (response['success'] == true) {
-        return response['data'];
-      } else {
-        throw Exception(response['error'] ?? 'Failed to delete promo code');
-      }
+      if (response['success'] == true) return;
+      final err = response['error'];
+      final msg = err is String ? err : err?.toString() ?? 'Failed to delete promo code';
+      final code = response['statusCode'];
+      throw Exception(code != null ? '$msg (HTTP $code)' : msg);
     } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('Delete promo code error: ${e.toString()}');
     }
   }
@@ -181,7 +211,7 @@ class AdminService {
   }) async {
     try {
       final response = await ApiService.get(
-        '$baseUrl/admin/get-all-subservice-rating-review/$subServiceId',
+        '$_baseUrl/admin/get-all-subservice-rating-review/$subServiceId',
         requireAuth: true,
       );
       
@@ -199,7 +229,7 @@ class AdminService {
   Future<Map<String, dynamic>?> getAllOrders() async {
     try {
       final response = await ApiService.get(
-        '$baseUrl/admin/get-all-orders',
+        '$_baseUrl/admin/get-all-orders',
         requireAuth: true,
       );
       
@@ -217,7 +247,7 @@ class AdminService {
   Future<Map<String, dynamic>?> getDashboardDetails() async {
     try {
       final response = await ApiService.get(
-        '$baseUrl/admin/get-dashboard-details',
+        '$_baseUrl/admin/get-dashboard-details',
         requireAuth: true,
       );
       
@@ -240,7 +270,7 @@ class AdminService {
       if (year != null) queryParams['year'] = year.toString();
       
       final response = await ApiService.get(
-        '$baseUrl/admin/get-month-wise-data',
+        '$_baseUrl/admin/get-month-wise-data',
         requireAuth: true,
         queryParams: queryParams.isNotEmpty ? queryParams : null,
       );
@@ -267,7 +297,7 @@ class AdminService {
       };
       
       final response = await ApiService.post(
-        '$baseUrl/admin/get-planner-dashboard',
+        '$_baseUrl/admin/get-planner-dashboard',
         payload,
         requireAuth: true,
       );
@@ -290,7 +320,7 @@ class AdminService {
   }) async {
     try {
       final response = await ApiService.post(
-        '$baseUrl/admin/get-all-available-groomers',
+        '$_baseUrl/admin/get-all-available-groomers',
         {
           'groomerId': groomerId,
           'timeSlotId': timeSlotId,
@@ -317,7 +347,7 @@ class AdminService {
   }) async {
     try {
       final response = await ApiService.post(
-        '$baseUrl/admin/get-all-available-groomers-booking',
+        '$_baseUrl/admin/get-all-available-groomers-booking',
         {
           'date': date,
           'timeslot': timeslot,
@@ -353,7 +383,7 @@ class AdminService {
       final files = image != null ? {'image': image} : null;
       
       final response = await ApiService.postMultipart(
-        '$baseUrl/admin/create-artical',
+        '$_baseUrl/admin/create-artical',
         fields,
         files: files,
         requireAuth: true,
@@ -373,7 +403,7 @@ class AdminService {
   Future<Map<String, dynamic>?> getAllArticles() async {
     try {
       final response = await ApiService.get(
-        '$baseUrl/admin/get-all-articals',
+        '$_baseUrl/admin/get-all-articals',
         requireAuth: true,
       );
       
@@ -393,7 +423,7 @@ class AdminService {
   }) async {
     try {
       final response = await ApiService.get(
-        '$baseUrl/admin/get-artical/$articleId',
+        '$_baseUrl/admin/get-artical/$articleId',
         requireAuth: true,
       );
       
@@ -424,7 +454,7 @@ class AdminService {
       final files = image != null ? {'image': image} : null;
       
       final response = await ApiService.putMultipart(
-        '$baseUrl/admin/update-artical/$articleId',
+        '$_baseUrl/admin/update-artical/$articleId',
         fields,
         files: files,
         requireAuth: true,
@@ -446,7 +476,7 @@ class AdminService {
   }) async {
     try {
       final response = await ApiService.delete(
-        '$baseUrl/admin/delete-artical/$articleId',
+        '$_baseUrl/admin/delete-artical/$articleId',
         requireAuth: true,
       );
       

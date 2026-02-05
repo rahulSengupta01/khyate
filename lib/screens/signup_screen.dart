@@ -507,9 +507,11 @@ For privacy-related questions, contact us through the app or our support channel
     final screenHeight = MediaQuery.of(context).size.height;
     final logoColor = const Color(0xFF20C8B1);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: SingleChildScrollView(
@@ -1595,6 +1597,7 @@ For privacy-related questions, contact us through the app or our support channel
           ),
         ),
       ),
+    ),
     );
   }
 }

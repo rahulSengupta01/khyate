@@ -112,10 +112,15 @@ class ApiService {
         final decoded = jsonDecode(responseBody);
         data = _ensureDartMap(decoded);
       } catch (e) {
-        // If response is not JSON, return raw response
+        // If response is not JSON, it might be an HTML page (wrong base URL / hitting admin web UI).
+        final bodyLower = responseBody.toLowerCase();
+        final looksLikeHtml = bodyLower.contains('<html') || bodyLower.contains('<!doctype html');
+        final friendly = looksLikeHtml
+            ? 'Server returned HTML (wrong API URL or missing /api/v1). Please check AppConfig.adminBaseUrl / baseUrl.'
+            : (responseBody.isNotEmpty ? responseBody : 'Invalid response format');
         return {
           'success': false,
-          'error': responseBody.isNotEmpty ? responseBody : 'Invalid response format',
+          'error': friendly,
           'statusCode': response.statusCode,
         };
       }
@@ -127,10 +132,15 @@ class ApiService {
           'statusCode': response.statusCode,
         };
       } else {
+        final code = response.statusCode;
+        final msg = data['message'] ?? data['error'] ?? data['msg'] ?? 'Request failed';
+        final friendly = code == 401
+            ? 'Unauthorized (401). Please log in as Admin.'
+            : (code == 403 ? 'Forbidden (403). Admin access required.' : msg);
         return {
           'success': false,
-          'error': data['message'] ?? data['error'] ?? data['msg'] ?? 'Request failed',
-          'statusCode': response.statusCode,
+          'error': friendly,
+          'statusCode': code,
           'data': data,
         };
       }
@@ -169,14 +179,28 @@ class ApiService {
       print('API Response Body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
       
       final responseBody = response.body;
+      dynamic decoded;
       Map<String, dynamic> data;
       
       try {
-        data = jsonDecode(responseBody);
+        decoded = jsonDecode(responseBody);
+        // Backend may return a JSON array (e.g. get-all-promo-codes); GET expects Map so wrap it
+        if (decoded is List) {
+          data = <String, dynamic>{'data': decoded, 'promoCodes': decoded};
+        } else if (decoded is Map) {
+          data = _ensureDartMap(decoded);
+        } else {
+          data = <String, dynamic>{};
+        }
       } catch (e) {
+        final bodyLower = responseBody.toLowerCase();
+        final looksLikeHtml = bodyLower.contains('<html') || bodyLower.contains('<!doctype html');
+        final friendly = looksLikeHtml
+            ? 'Server returned HTML (wrong API URL or missing /api/v1). Please check AppConfig.adminBaseUrl / baseUrl.'
+            : (responseBody.isNotEmpty ? responseBody : 'Invalid response format');
         return {
           'success': false,
-          'error': responseBody.isNotEmpty ? responseBody : 'Invalid response format',
+          'error': friendly,
           'statusCode': response.statusCode,
         };
       }
@@ -188,10 +212,15 @@ class ApiService {
           'statusCode': response.statusCode,
         };
       } else {
+        final code = response.statusCode;
+        final msg = data['message'] ?? data['error'] ?? data['msg'] ?? 'Request failed';
+        final friendly = code == 401
+            ? 'Unauthorized (401). Please log in as Admin.'
+            : (code == 403 ? 'Forbidden (403). Admin access required.' : msg);
         return {
           'success': false,
-          'error': data['message'] ?? data['error'] ?? data['msg'] ?? 'Request failed',
-          'statusCode': response.statusCode,
+          'error': friendly,
+          'statusCode': code,
           'data': data,
         };
       }
@@ -426,30 +455,35 @@ class ApiService {
       try {
         data = jsonDecode(responseBody);
       } catch (e) {
+        final bodyLower = responseBody.toLowerCase();
+        final looksLikeHtml = bodyLower.contains('<html') || bodyLower.contains('<!doctype html');
+        final friendly = looksLikeHtml
+            ? 'Server returned HTML (wrong API URL). Check AppConfig.adminBaseUrl.'
+            : (responseBody.isNotEmpty ? responseBody : 'Invalid response format');
         return {
           'success': false,
-          'error': responseBody.isNotEmpty ? responseBody : 'Invalid response format',
+          'error': friendly,
           'statusCode': response.statusCode,
         };
       }
       
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // Extract actual data if backend wraps it in ApiResponse format
-        // Backend returns: { statusCode, data: {...}, message, success }
-        final actualData = (data is Map && data['data'] != null) 
-            ? data['data'] 
-            : data;
-        
+        final actualData = (data is Map && data['data'] != null) ? data['data'] : data;
         return {
           'success': true,
           'data': actualData,
           'statusCode': response.statusCode,
         };
       } else {
+        final code = response.statusCode;
+        final msg = data['message'] ?? data['error'] ?? data['msg'] ?? 'Request failed';
+        final friendly = code == 401
+            ? 'Unauthorized (401). Please log in as Admin.'
+            : (code == 403 ? 'Forbidden (403). Admin access required.' : msg);
         return {
           'success': false,
-          'error': data['message'] ?? data['error'] ?? data['msg'] ?? 'Request failed',
-          'statusCode': response.statusCode,
+          'error': friendly,
+          'statusCode': code,
           'data': data,
         };
       }

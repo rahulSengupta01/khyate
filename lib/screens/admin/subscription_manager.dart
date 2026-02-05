@@ -6,6 +6,7 @@ import '../../services/subscription_service.dart';
 import '../../services/master_data_service.dart';
 import '../../services/trainer_service.dart';
 import '../../widgets/searchable_dropdown.dart';
+import '../../widgets/admin/admin_theme.dart';
 
 class SubscriptionManager extends StatefulWidget {
   /// Title for this tab: e.g. 'Programs' or 'Classes'.
@@ -225,20 +226,71 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                   child: Container(
                     height: 150,
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: AdminTheme.uploadSectionDecoration(context),
                     child: editMedia != null
-                        ? Image.file(editMedia!, fit: BoxFit.cover)
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.file(editMedia!, fit: BoxFit.cover),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Material(
+                                  color: AdminTheme.editOverlayColor(context),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                    onPressed: () async {
+                                      final picker = ImagePicker();
+                                      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                      if (pickedFile != null) {
+                                        setDialogState(() {
+                                          editMedia = File(pickedFile.path);
+                                          editMediaUrl = null;
+                                        });
+                                      }
+                                    },
+                                    padding: const EdgeInsets.all(6),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
                         : editMediaUrl != null
-                            ? Image.network(editMediaUrl!, fit: BoxFit.cover)
-                            : const Column(
+                            ? Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(editMediaUrl!, fit: BoxFit.cover),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Material(
+                                      color: AdminTheme.editOverlayColor(context),
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                        onPressed: () async {
+                                          final picker = ImagePicker();
+                                          final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                          if (pickedFile != null) {
+                                            setDialogState(() {
+                                              editMedia = File(pickedFile.path);
+                                              editMediaUrl = null;
+                                            });
+                                          }
+                                        },
+                                        padding: const EdgeInsets.all(6),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add_photo_alternate, size: 48),
-                                  SizedBox(height: 8),
-                                  Text('Tap to select media'),
+                                  Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                  const SizedBox(height: 8),
+                                  Text('Tap to select media', style: TextStyle(color: AdminTheme.fieldTextMuted(context))),
                                 ],
                               ),
                   ),
@@ -246,27 +298,18 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: editNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Name'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: editPriceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Price',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Price'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: editDescriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Description'),
                   maxLines: 3,
                 ),
               ],
@@ -277,7 +320,8 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
+              style: AdminTheme.primaryButtonStyle,
               onPressed: () async {
                 try {
                   await _subscriptionService.updateSubscription(
@@ -321,9 +365,9 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text('Delete'),
           ),
         ],
@@ -447,116 +491,95 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.grey.shade50],
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.fitness_center, color: Colors.purple, size: 28),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
-                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.title == 'Programs'
-                                    ? 'Add a new program'
-                                    : widget.title == 'Classes'
-                                        ? 'Add a new class'
-                                        : 'Add a new course or class',
-                                style: const TextStyle(fontSize: 14, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 24),
-                    GestureDetector(
-                      onTap: _pickMedia,
-                      child: Container(
-                        height: 180,
-                        width: double.infinity,
+          Container(
+            decoration: AdminTheme.formCardDecoration(context),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300, width: 2),
-                          borderRadius: BorderRadius.circular(16),
-                          color: Colors.grey.shade50,
+                          color: AdminTheme.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: _selectedMedia != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: Image.file(_selectedMedia!, fit: BoxFit.cover),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.purple.shade50,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.add_photo_alternate, size: 48, color: Colors.purple),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Tap to select media',
-                                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
+                        child: Icon(Icons.fitness_center, color: AdminTheme.primary, size: 28),
                       ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
+                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.title == 'Programs'
+                                  ? 'Add a new program'
+                                  : widget.title == 'Classes'
+                                      ? 'Add a new class'
+                                      : 'Add a new course or class',
+                              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
+                  const SizedBox(height: 24),
+                  GestureDetector(
+                    onTap: _pickMedia,
+                    child: Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: AdminTheme.uploadSectionDecoration(context),
+                      child: _selectedMedia != null
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.file(_selectedMedia!, fit: BoxFit.cover),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Material(
+                                    color: AdminTheme.editOverlayColor(context),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                      onPressed: _pickMedia,
+                                      padding: const EdgeInsets.all(6),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Tap to select media',
+                                  style: TextStyle(fontSize: 16, color: AdminTheme.fieldTextMuted(context)),
+                                ),
+                              ],
+                            ),
                     ),
+                  ),
                   const SizedBox(height: 24),
                   TextField(
                     controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Name *',
-                      prefixIcon: const Icon(Icons.title, color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.purple, width: 2),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    ),
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Name *', prefixIcon: Icon(Icons.title, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   ),
                   const SizedBox(height: 16),
                   SearchableDropdown<Map<String, dynamic>>(
@@ -582,29 +605,14 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                     },
                     isRequired: true,
                     prefixIcon: Icons.category,
+                    decoration: AdminTheme.dropdownTriggerDecoration(context),
+                    labelStyle: AdminTheme.dropdownLabelStyle(context),
+                    valueStyle: AdminTheme.dropdownValueStyle(context),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _priceController,
-                    decoration: InputDecoration(
-                      labelText: 'Price *',
-                      prefixIcon: const Icon(Icons.attach_money, color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.purple, width: 2),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    ),
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Price *', prefixIcon: Icon(Icons.attach_money, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 16),
@@ -621,6 +629,9 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                     },
                     isRequired: true,
                     prefixIcon: Icons.person,
+                    decoration: AdminTheme.dropdownTriggerDecoration(context),
+                    labelStyle: AdminTheme.dropdownLabelStyle(context),
+                    valueStyle: AdminTheme.dropdownValueStyle(context),
                   ),
                   const SizedBox(height: 16),
                   SearchableDropdown<Map<String, dynamic>>(
@@ -636,29 +647,14 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                     },
                     isRequired: true,
                     prefixIcon: Icons.fitness_center,
+                    decoration: AdminTheme.dropdownTriggerDecoration(context),
+                    labelStyle: AdminTheme.dropdownLabelStyle(context),
+                    valueStyle: AdminTheme.dropdownValueStyle(context),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _descriptionController,
-                    decoration: InputDecoration(
-                      labelText: 'Description',
-                      prefixIcon: const Icon(Icons.description, color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.purple, width: 2),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    ),
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Description', prefixIcon: Icon(Icons.description, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
@@ -676,6 +672,9 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                     },
                     isRequired: true,
                     prefixIcon: Icons.location_on,
+                    decoration: AdminTheme.dropdownTriggerDecoration(context),
+                    labelStyle: AdminTheme.dropdownLabelStyle(context),
+                    valueStyle: AdminTheme.dropdownValueStyle(context),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -683,25 +682,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                       Expanded(
                         child: TextField(
                           controller: _startTimeController,
-                          decoration: InputDecoration(
-                            labelText: 'Start Time *',
-                            prefixIcon: const Icon(Icons.access_time, color: Colors.grey),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.purple, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          ),
+                          decoration: AdminTheme.inputDecoration(context, labelText: 'Start Time *', prefixIcon: Icon(Icons.access_time, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                           readOnly: true,
                           onTap: () => _pickTime(_startTimeController),
                         ),
@@ -710,25 +691,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                       Expanded(
                         child: TextField(
                           controller: _endTimeController,
-                          decoration: InputDecoration(
-                            labelText: 'End Time *',
-                            prefixIcon: const Icon(Icons.access_time_filled, color: Colors.grey),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.purple, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          ),
+                          decoration: AdminTheme.inputDecoration(context, labelText: 'End Time *', prefixIcon: Icon(Icons.access_time_filled, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                           readOnly: true,
                           onTap: () => _pickTime(_endTimeController),
                         ),
@@ -739,32 +702,32 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.calendar_today, color: Colors.purple, size: 20),
+                            Icon(Icons.calendar_today, color: AdminTheme.primary, size: 20),
                             const SizedBox(width: 8),
-                            const Text(
+                            Text(
                               'Class Dates',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                             ),
                             const Spacer(),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.purple.shade100,
+                                color: AdminTheme.primary.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 '${_selectedDates.length} date${_selectedDates.length != 1 ? 's' : ''}',
                                 style: TextStyle(
-                                  color: Colors.purple.shade900,
+                                  color: AdminTheme.primaryDark,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -774,18 +737,11 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton.icon(
+                          child: FilledButton.icon(
                             onPressed: _pickDate,
                             icon: const Icon(Icons.add_circle_outline, size: 20),
                             label: const Text('Add Date'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
+                            style: AdminTheme.primaryButtonStyle,
                           ),
                         ),
                         if (_selectedDates.isNotEmpty) ...[
@@ -797,8 +753,8 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                               return Chip(
                                 label: Text(date),
                                 deleteIcon: const Icon(Icons.close, size: 18),
-                                backgroundColor: Colors.purple.shade50,
-                                labelStyle: TextStyle(color: Colors.purple.shade900),
+                                backgroundColor: AdminTheme.primary.withOpacity(0.15),
+                                labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                                 onDeleted: () {
                                   setState(() {
                                     _selectedDates.remove(date);
@@ -815,17 +771,17 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
                     ),
                     child: Column(
                       children: [
                         CheckboxListTile(
-                          title: const Text('Is Active', style: TextStyle(fontWeight: FontWeight.w500)),
-                          subtitle: const Text('Make this subscription available for booking'),
+                          title: Text('Is Active', style: TextStyle(fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurface)),
+                          subtitle: Text('Make this subscription available for booking', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                           value: _isActive,
-                          activeColor: Colors.purple,
+                          activeColor: AdminTheme.primary,
                           contentPadding: EdgeInsets.zero,
                           onChanged: (value) {
                             setState(() {
@@ -833,12 +789,12 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                             });
                           },
                         ),
-                        const Divider(),
+                        Divider(color: Theme.of(context).colorScheme.outlineVariant),
                         CheckboxListTile(
-                          title: const Text('Is Single Class', style: TextStyle(fontWeight: FontWeight.w500)),
-                          subtitle: const Text('Check if this is a one-time class (requires 1 date)'),
+                          title: Text('Is Single Class', style: TextStyle(fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurface)),
+                          subtitle: Text('Check if this is a one-time class (requires 1 date)', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                           value: _isSingleClass,
-                          activeColor: Colors.purple,
+                          activeColor: AdminTheme.primary,
                           contentPadding: EdgeInsets.zero,
                           onChanged: (value) {
                             setState(() {
@@ -853,7 +809,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: ElevatedButton.icon(
+                    child: FilledButton.icon(
                       onPressed: _isLoading ? null : _createSubscription,
                       icon: _isLoading
                           ? const SizedBox(
@@ -866,113 +822,85 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                         _isLoading ? 'Creating...' : 'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                      ),
+                      style: AdminTheme.primaryButtonStyle,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          ),
           const SizedBox(height: 16),
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.grey.shade50],
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark ? AdminTheme.cardBgDark : AdminTheme.cardBgTint,
+              borderRadius: BorderRadius.circular(AdminTheme.radiusCard),
+              border: Border.all(color: AdminTheme.border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.list, color: Colors.blue, size: 24),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AdminTheme.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${widget.title} List',
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'View and manage all ${widget.title.toLowerCase()}',
-                                style: const TextStyle(fontSize: 14, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              labelText: 'Search ${widget.title.toLowerCase()}...',
-                              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.blue, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        child: Icon(Icons.list, color: AdminTheme.primary, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${widget.title} List',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: _loadSubscriptions,
-                          icon: const Icon(Icons.search, size: 20),
-                          label: const Text('Search'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            const SizedBox(height: 4),
+                            Text(
+                              'View and manage all ${widget.title.toLowerCase()}',
+                              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                             ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: AdminTheme.inputDecoration(
+                            context,
+                            labelText: 'Search ${widget.title.toLowerCase()}...',
+                            prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: _loadSubscriptions,
+                        icon: const Icon(Icons.search, size: 20),
+                        label: const Text('Search'),
+                        style: AdminTheme.primaryButtonStyle,
+                      ),
+                    ],
+                  ),
                     const SizedBox(height: 20),
                   _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -983,11 +911,11 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.subscriptions, size: 64, color: Colors.grey.shade400),
+                                    Icon(Icons.subscriptions, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     const SizedBox(height: 16),
                                     Text(
                                       'No subscriptions found',
-                                      style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                                      style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                     ),
                                   ],
                                 ),
@@ -1010,7 +938,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                                       height: 60,
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(12),
-                                        color: Colors.purple.shade50,
+                                        color: AdminTheme.primary.withOpacity(0.15),
                                       ),
                                       child: subscription['media'] != null
                                           ? ClipRRect(
@@ -1018,20 +946,20 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                                               child: Image.network(
                                                 subscription['media'],
                                                 fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.fitness_center, color: Colors.purple),
+                                                errorBuilder: (context, error, stackTrace) => Icon(Icons.fitness_center, color: AdminTheme.primary),
                                               ),
                                             )
-                                          : const Icon(Icons.fitness_center, color: Colors.purple),
+                                          : Icon(Icons.fitness_center, color: AdminTheme.primary),
                                     ),
                                     title: Text(
                                       subscription['name'] ?? 'Unknown',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
                                     ),
                                     subtitle: Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: Text(
                                         'Price: AED ${subscription['price'] ?? 'N/A'}',
-                                        style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
                                       ),
                                     ),
                                     trailing: Row(
@@ -1056,7 +984,6 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                 ],
               ),
             ),
-          ),
           ),
         ],
       ),

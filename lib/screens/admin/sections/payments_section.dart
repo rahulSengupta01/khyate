@@ -326,12 +326,7 @@ class _PaymentsSectionState extends State<PaymentsSection> {
                 _searchQuery = v;
                 _payments = _applyFilters(_allPayments);
               }),
-              decoration: const InputDecoration(
-                hintText: 'Search payments…',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
+              decoration: AdminTheme.inputDecoration(context, hintText: 'Search payments…', prefixIcon: const Icon(Icons.search), isDense: true),
             ),
           ),
           const SizedBox(height: 16),
@@ -347,7 +342,7 @@ class _PaymentsSectionState extends State<PaymentsSection> {
                     onPressed: () {},
                     icon: const Icon(Icons.download, size: 20),
                     label: const Text('Export Excel'),
-                    style: FilledButton.styleFrom(backgroundColor: AdminTheme.primary),
+                    style: AdminTheme.primaryButtonStyle,
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(

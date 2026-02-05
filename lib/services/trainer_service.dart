@@ -8,19 +8,19 @@ class TrainerService {
   
   // 5.1 Create Trainer
   // POST /api/v1/trainer/create-trainer (multipart/form-data)
-  // Required: email, first_name, phone_number, password, emirates_id
-  // Optional: profile_image (file), last_name, gender, address, age, country (ObjectId), city (ObjectId),
-  //           specialization, experience (EXPERIENCE|FRESHER), experienceYear, serviceProvider (JSON array)
+  // Required: email, first_name, emirates_id, phone_number, password
+  // Optional: last_name, gender, address, age, country (ObjectId), city (ObjectId),
+  //           specialization, experience (free text), experienceYear, serviceProvider (JSON array string)
+  // Optional files: profile_image, id_proof, certificate (one each)
   Future<Map<String, dynamic>?> createTrainer({
     File? profileImage,
-    String? profileImageUrl,
     File? idProof,
-    File? certificates,
+    File? certificate,
     required String email,
     required String firstName,
     String? lastName,
     required String phoneNumber,
-    String? emiratesId,
+    required String emiratesId,
     String? gender,
     String? address,
     int? age,
@@ -33,20 +33,21 @@ class TrainerService {
     List<String>? serviceProvider,
   }) async {
     try {
-      final trimmedEmiratesId = (emiratesId ?? '').trim();
-      // Backend expects digits-only (same as signup); strip hyphens/spaces to avoid "Emirates ID required"
-      final digitsOnly = trimmedEmiratesId.replaceAll(RegExp(r'[^\d]'), '');
-      final effectiveEmiratesId = digitsOnly.isEmpty
-          ? 'TEMP${DateTime.now().millisecondsSinceEpoch}'
-          : digitsOnly;
+      final trimmedEmiratesId = emiratesId.trim();
+      if (trimmedEmiratesId.isEmpty) {
+        throw Exception('Emirates ID is required');
+      }
+      // API: max 20 chars for emirates_id; send as-is (with or without dashes)
+      final emiratesIdValue = trimmedEmiratesId.length > 20
+          ? trimmedEmiratesId.substring(0, 20)
+          : trimmedEmiratesId;
 
       final fields = <String, dynamic>{
         'email': email.trim(),
         'first_name': firstName.trim(),
         'phone_number': phoneNumber.trim(),
         'password': password,
-        'emirates_id': effectiveEmiratesId,
-        'emiratesId': effectiveEmiratesId,
+        'emirates_id': emiratesIdValue,
       };
       if (lastName != null && lastName.trim().isNotEmpty) {
         fields['last_name'] = lastName.trim();
@@ -73,27 +74,22 @@ class TrainerService {
       if (specialization != null && specialization.trim().isNotEmpty) {
         fields['specialization'] = specialization.trim();
       }
+      // Backend expects enum: EXPERIENCE | FRESHER
       if (experience != null && experience.trim().isNotEmpty) {
-        String exp = experience.trim().toUpperCase();
-        if (exp == 'YES' || exp == 'EXPERIENCED' || exp == 'HAS EXPERIENCE') exp = 'EXPERIENCE';
-        else if (exp == 'NO' || exp == 'FRESH' || exp == 'NEW') exp = 'FRESHER';
-        fields['experience'] = exp;
+        final v = experience.trim().toUpperCase();
+        if (v == 'EXPERIENCE' || v == 'FRESHER') {
+          fields['experience'] = v;
+        }
       }
-      final expVal = fields['experience']?.toString() ?? '';
-      final effectiveYear = (experienceYear ?? 0);
-      if (expVal == 'FRESHER') {
-        fields['experienceYear'] = '0';
-      } else if (effectiveYear >= 0) {
-        fields['experienceYear'] = effectiveYear.toString();
+      if (experienceYear != null && experienceYear >= 0) {
+        fields['experienceYear'] = experienceYear.toString();
       }
       fields['serviceProvider'] = jsonEncode(serviceProvider ?? []);
-      if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-        fields['profileImageUrl'] = profileImageUrl;
-      }
+
       final files = <String, File>{};
       if (profileImage != null) files['profile_image'] = profileImage;
       if (idProof != null) files['id_proof'] = idProof;
-      if (certificates != null) files['certificates'] = certificates;
+      if (certificate != null) files['certificate'] = certificate;
       final filesMap = files.isEmpty ? null : files;
       
       final response = await ApiService.postMultipart(

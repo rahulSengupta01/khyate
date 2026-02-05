@@ -20,10 +20,17 @@ class AdminSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = color ?? AdminTheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AdminTheme.fieldBgDark : null;
+    final borderColor = isDark ? AdminTheme.fieldBorderDark : null;
+    final titleColor = isDark ? AdminTheme.fieldTextMutedDark : Theme.of(context).colorScheme.onSurfaceVariant;
+    final valueColor = isDark ? AdminTheme.fieldTextDark : Theme.of(context).colorScheme.onSurface;
     return Card(
       elevation: AdminTheme.elevationCard,
+      color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AdminTheme.radiusCard),
+        side: borderColor != null ? BorderSide(color: borderColor) : BorderSide.none,
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -32,7 +39,7 @@ class AdminSummaryCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: c.withOpacity(0.1),
+                color: c.withOpacity(isDark ? 0.25 : 0.1),
                 borderRadius: BorderRadius.circular(AdminTheme.radiusButton),
               ),
               child: Icon(icon, color: c, size: 28),
@@ -46,7 +53,7 @@ class AdminSummaryCard extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: titleColor,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -55,7 +62,7 @@ class AdminSummaryCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: valueColor,
                     ),
                   ),
                   if (subtitle != null) ...[

@@ -14,11 +14,20 @@ import '../models/membership_card_model.dart';   // <-- USE MODEL FROM MODELS FO
 class MembershipCard extends StatelessWidget {
   final MembershipCardData data;
   final VoidCallback? onTap;
+  /// When set (e.g. dark blue on fitness/wellness in dark mode), used as card background instead of theme surface.
+  final Color? cardBackgroundColor;
 
-  const MembershipCard({super.key, required this.data, this.onTap});
+  const MembershipCard({super.key, required this.data, this.onTap, this.cardBackgroundColor});
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = cardBackgroundColor ?? colorScheme.surface;
+    final textColor = colorScheme.onSurface;
+    final subTextColor = colorScheme.onSurfaceVariant;
+    final detailsBg = isDark ? colorScheme.surfaceContainerHighest : Colors.grey.shade50;
+
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -26,7 +35,7 @@ class MembershipCard extends StatelessWidget {
         width: 260,
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -82,7 +91,7 @@ class MembershipCard extends StatelessWidget {
                       Text(
                         "AED ${data.price}",
                         style: TextStyle(
-                          color: Colors.black87,
+                          color: textColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -97,6 +106,7 @@ class MembershipCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -107,7 +117,7 @@ class MembershipCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.black87,
+                      color: subTextColor,
                       fontSize: 14,
                     ),
                   ),
@@ -117,7 +127,7 @@ class MembershipCard extends StatelessWidget {
                   Container(
                     padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: detailsBg,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -138,7 +148,7 @@ class MembershipCard extends StatelessWidget {
                                     child: Text(
                                       data.time,
                                       style: TextStyle(
-                                        color: Colors.black54,
+                                        color: subTextColor,
                                         fontSize: 12,
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -161,7 +171,7 @@ class MembershipCard extends StatelessWidget {
                                     child: Text(
                                       data.date,
                                       style: TextStyle(
-                                        color: Colors.black54,
+                                        color: subTextColor,
                                         fontSize: 12,
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -189,7 +199,7 @@ class MembershipCard extends StatelessWidget {
                                     child: Text(
                                       data.location,
                                       style: TextStyle(
-                                        color: Colors.black54,
+                                        color: subTextColor,
                                         fontSize: 12,
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -212,7 +222,7 @@ class MembershipCard extends StatelessWidget {
                                     child: Text(
                                       data.mentor,
                                       style: TextStyle(
-                                        color: Colors.black54,
+                                        color: subTextColor,
                                         fontSize: 12,
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -238,7 +248,7 @@ class MembershipCard extends StatelessWidget {
                           children: [
                             Icon(
                               rating > 0 ? Icons.star : Icons.star_border,
-                              color: rating > 0 ? Colors.amber : Colors.black38,
+                              color: rating > 0 ? Colors.amber : subTextColor,
                               size: 16,
                             ),
                             const SizedBox(width: 4),
@@ -253,11 +263,11 @@ class MembershipCard extends StatelessWidget {
                       }
                       return Row(
                         children: [
-                          Icon(Icons.star_border, color: Colors.black38, size: 16),
+                          Icon(Icons.star_border, color: subTextColor, size: 16),
                           const SizedBox(width: 4),
                           Text(
                             "0 review",
-                            style: TextStyle(color: Colors.black54, fontSize: 13),
+                            style: TextStyle(color: subTextColor, fontSize: 13),
                           ),
                         ],
                       );

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/package_service.dart';
+import '../../widgets/admin/admin_theme.dart';
 
 class PackageManager extends StatefulWidget {
   @override
@@ -274,20 +275,71 @@ class _PackageManagerState extends State<PackageManager> {
                   child: Container(
                     height: 150,
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: AdminTheme.uploadSectionDecoration(context),
                     child: editImage != null
-                        ? Image.file(editImage!, fit: BoxFit.cover)
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.file(editImage!, fit: BoxFit.cover),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Material(
+                                  color: AdminTheme.editOverlayColor(context),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                    onPressed: () async {
+                                      final picker = ImagePicker();
+                                      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                      if (pickedFile != null) {
+                                        setDialogState(() {
+                                          editImage = File(pickedFile.path);
+                                          editImageUrl = null;
+                                        });
+                                      }
+                                    },
+                                    padding: const EdgeInsets.all(6),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
                         : editImageUrl != null
-                            ? Image.network(editImageUrl!, fit: BoxFit.cover)
-                            : const Column(
+                            ? Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(editImageUrl!, fit: BoxFit.cover),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Material(
+                                      color: AdminTheme.editOverlayColor(context),
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                        onPressed: () async {
+                                          final picker = ImagePicker();
+                                          final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                          if (pickedFile != null) {
+                                            setDialogState(() {
+                                              editImage = File(pickedFile.path);
+                                              editImageUrl = null;
+                                            });
+                                          }
+                                        },
+                                        padding: const EdgeInsets.all(6),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add_photo_alternate, size: 48),
-                                  SizedBox(height: 8),
-                                  Text('Tap to select image'),
+                                  Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                  const SizedBox(height: 8),
+                                  Text('Tap to select image', style: TextStyle(color: AdminTheme.fieldTextMuted(context))),
                                 ],
                               ),
                   ),
@@ -295,18 +347,12 @@ class _PackageManagerState extends State<PackageManager> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: editNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Name'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: editPriceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Price',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Price'),
                   keyboardType: TextInputType.number,
                 ),
               ],
@@ -361,183 +407,108 @@ class _PackageManagerState extends State<PackageManager> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Create Membership card - inline form like Programs
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.grey.shade50],
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.card_membership, color: Colors.purple, size: 28),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Create Membership',
-                                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Add a new membership package',
-                                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 24),
-                    GestureDetector(
-                      onTap: _pickImage,
-                      child: Container(
-                        height: 180,
-                        width: double.infinity,
+          Container(
+            decoration: AdminTheme.formCardDecoration(context),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300, width: 2),
-                          borderRadius: BorderRadius.circular(16),
-                          color: Colors.grey.shade50,
+                          color: AdminTheme.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: _selectedImage != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
-                                child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.purple.shade50,
-                                      shape: BoxShape.circle,
+                        child: Icon(Icons.card_membership, color: AdminTheme.primary, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Create Membership',
+                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Add a new membership package',
+                              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
+                  const SizedBox(height: 24),
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: AdminTheme.uploadSectionDecoration(context),
+                      child: _selectedImage != null
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Material(
+                                    color: AdminTheme.editOverlayColor(context),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: IconButton(
+                                      icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                      onPressed: _pickImage,
+                                      padding: const EdgeInsets.all(6),
                                     ),
-                                    child: const Icon(Icons.add_photo_alternate, size: 48, color: Colors.purple),
                                   ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Tap to select image',
-                                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                                  ),
-                                ],
-                              ),
-                      ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Tap to select image',
+                                  style: TextStyle(fontSize: 16, color: AdminTheme.fieldTextMuted(context)),
+                                ),
+                              ],
+                            ),
                     ),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Package Name *',
-                        prefixIcon: const Icon(Icons.title, color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.purple, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _priceController,
-                      decoration: InputDecoration(
-                        labelText: 'Price *',
-                        prefixIcon: const Icon(Icons.attach_money, color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.purple, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _numberOfClassesController,
-                      decoration: InputDecoration(
-                        labelText: 'No. of Classes *',
-                        prefixIcon: const Icon(Icons.fitness_center, color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.purple, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                      keyboardType: TextInputType.number,
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _selectedDuration,
-                      decoration: InputDecoration(
-                        labelText: 'Duration *',
-                        prefixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.purple, width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _nameController,
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Package Name *', prefixIcon: Icon(Icons.title, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _priceController,
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Price *', prefixIcon: Icon(Icons.attach_money, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _numberOfClassesController,
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'No. of Classes *', prefixIcon: Icon(Icons.fitness_center, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _selectedDuration,
+                    decoration: AdminTheme.inputDecoration(context, labelText: 'Duration *', prefixIcon: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                       items: _durationOptions
                           .map((d) => DropdownMenuItem(
                                 value: d,
@@ -546,232 +517,199 @@ class _PackageManagerState extends State<PackageManager> {
                           .toList(),
                       onChanged: (v) => setState(() => _selectedDuration = v),
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.list, color: Colors.purple, size: 20),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Features',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.list, color: AdminTheme.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Features',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AdminTheme.primary.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.shade100,
-                                  borderRadius: BorderRadius.circular(20),
+                              child: Text(
+                                '${_featureControllers.length} feature${_featureControllers.length != 1 ? 's' : ''}',
+                                style: TextStyle(
+                                  color: AdminTheme.primaryDark,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                child: Text(
-                                  '${_featureControllers.length} feature${_featureControllers.length != 1 ? 's' : ''}',
-                                  style: TextStyle(
-                                    color: Colors.purple.shade900,
-                                    fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...List.generate(_featureControllers.length, (index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _featureControllers[index],
+                                    decoration: AdminTheme.inputDecoration(context, hintText: 'Feature ${index + 1}', isDense: true),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ...List.generate(_featureControllers.length, (index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _featureControllers[index],
-                                      decoration: InputDecoration(
-                                        hintText: 'Feature ${index + 1}',
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                        isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                      ),
-                                    ),
+                                if (index == _featureControllers.length - 1)
+                                  IconButton(
+                                    icon: Icon(Icons.add_circle, color: AdminTheme.primary),
+                                    onPressed: () {
+                                      setState(() {
+                                        _featureControllers.add(TextEditingController());
+                                      });
+                                    },
+                                    tooltip: 'Add feature',
                                   ),
-                                  if (index == _featureControllers.length - 1)
-                                    IconButton(
-                                      icon: const Icon(Icons.add_circle, color: Colors.purple),
-                                      onPressed: () {
-                                        setState(() {
-                                          _featureControllers.add(TextEditingController());
-                                        });
-                                      },
-                                      tooltip: 'Add feature',
-                                    ),
-                                  if (_featureControllers.length > 1)
-                                    IconButton(
-                                      icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                      onPressed: () {
-                                        setState(() {
-                                          _featureControllers[index].dispose();
-                                          _featureControllers.removeAt(index);
-                                        });
-                                      },
-                                      tooltip: 'Remove',
-                                    ),
-                                ],
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
+                                if (_featureControllers.length > 1)
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                    onPressed: () {
+                                      setState(() {
+                                        _featureControllers[index].dispose();
+                                        _featureControllers.removeAt(index);
+                                      });
+                                    },
+                                    tooltip: 'Remove',
+                                  ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _createPackage,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.add_circle, size: 20),
-                        label: Text(
-                          _isLoading ? 'Creating...' : 'Create Membership',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed: _isLoading ? null : _createPackage,
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.add_circle, size: 20),
+                      label: Text(
+                        _isLoading ? 'Creating...' : 'Create Membership',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
+                      style: AdminTheme.primaryButtonStyle,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
           const SizedBox(height: 16),
           // Membership list card - same style as Programs list
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.grey.shade50],
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark ? AdminTheme.cardBgDark : AdminTheme.cardBgTint,
+              borderRadius: BorderRadius.circular(AdminTheme.radiusCard),
+              border: Border.all(color: AdminTheme.border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.list, color: Colors.blue, size: 24),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AdminTheme.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Membership List',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'View and manage all membership packages',
-                                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              labelText: 'Search membership...',
-                              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.blue, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        child: Icon(Icons.list, color: AdminTheme.primary, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Membership List',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: _loadPackages,
-                          icon: const Icon(Icons.search, size: 20),
-                          label: const Text('Search'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            const SizedBox(height: 4),
+                            Text(
+                              'View and manage all membership packages',
+                              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                             ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: AdminTheme.inputDecoration(
+                            context,
+                            labelText: 'Search membership...',
+                            prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _packages.isEmpty
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(32.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.card_membership, size: 64, color: Colors.grey.shade400),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No membership packages found',
-                                        style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
-                                      ),
-                                    ],
-                                  ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.icon(
+                        onPressed: _loadPackages,
+                        icon: const Icon(Icons.search, size: 20),
+                        label: const Text('Search'),
+                        style: AdminTheme.primaryButtonStyle,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _packages.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.card_membership, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No membership packages found',
+                                      style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                    ),
+                                  ],
                                 ),
-                              )
+                              ),
+                            )
                             : ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -790,7 +728,7 @@ class _PackageManagerState extends State<PackageManager> {
                                         height: 60,
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(12),
-                                          color: Colors.purple.shade50,
+                                          color: AdminTheme.primary.withOpacity(0.15),
                                         ),
                                         child: imageUrl != null && imageUrl.toString().isNotEmpty
                                             ? ClipRRect(
@@ -798,20 +736,20 @@ class _PackageManagerState extends State<PackageManager> {
                                                 child: Image.network(
                                                   imageUrl.toString(),
                                                   fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) => const Icon(Icons.card_membership, color: Colors.purple),
+                                                  errorBuilder: (_, __, ___) => Icon(Icons.card_membership, color: AdminTheme.primary),
                                                 ),
                                               )
-                                            : const Icon(Icons.card_membership, color: Colors.purple),
+                                            : Icon(Icons.card_membership, color: AdminTheme.primary),
                                       ),
                                       title: Text(
                                         package['name'] ?? 'Unknown',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
                                       ),
                                       subtitle: Padding(
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(
                                           'Price: AED ${package['price'] ?? 'N/A'}${package['duration'] != null ? ' • ${package['duration']}' : ''}',
-                                          style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
                                         ),
                                       ),
                                       trailing: Row(
@@ -837,7 +775,6 @@ class _PackageManagerState extends State<PackageManager> {
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

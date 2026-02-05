@@ -37,6 +37,9 @@ class AdminShell extends StatefulWidget {
 const Color _adminBarColorDark = Color(0xFF111827);
 /// Light top bar / sidebar.
 const Color _adminBarColorLight = Color(0xFFF8FAFC);
+/// Sidebar/drawer: cyan background (AdminTheme.primary), white text.
+const Color _sidebarTextWhite = Color(0xFFFFFFFF);
+const Color _sidebarTextMuted = Color(0xFFE0E0E0);
 
 class _AdminShellState extends State<AdminShell> {
   bool _sidebarCollapsed = false;
@@ -56,6 +59,9 @@ class _AdminShellState extends State<AdminShell> {
     final isNarrow = MediaQuery.of(context).size.width < 900;
     final isDarkMode = context.watch<ThemeProvider>().isDarkMode;
     final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
+    final contentBg = isDarkMode
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF8FAFC);
     return Scaffold(
       backgroundColor: scaffoldBg,
       body: Builder(
@@ -64,16 +70,38 @@ class _AdminShellState extends State<AdminShell> {
             children: [
               if (!isNarrow) _buildSidebar(context, isDarkMode),
               Expanded(
-                child: Column(
-                  children: [
-                    _buildTopBar(context, isNarrow, isDarkMode),
-                    Expanded(
-                      child: Material(
-                        color: scaffoldBg,
-                        child: widget.child,
-                      ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: contentBg,
+                    gradient: isDarkMode
+                        ? null
+                        : LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xFFF8FAFC),
+                              const Color(0xFFF1F5F9),
+                              AdminTheme.primary.withOpacity(0.03),
+                            ],
+                          ),
+                  ),
+                  child: SafeArea(
+                    top: true,
+                    bottom: false,
+                    left: false,
+                    right: false,
+                    child: Column(
+                      children: [
+                        _buildTopBar(context, isNarrow, isDarkMode),
+                        Expanded(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: widget.child,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -85,14 +113,11 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   Widget _buildSidebar(BuildContext context, bool isDarkMode) {
-    final bgColor = isDarkMode ? Theme.of(context).cardTheme.color ?? AdminTheme.cardBgDark : _adminBarColorLight;
-    final textColor = isDarkMode ? Colors.white : AdminTheme.textPrimary;
-    final textMuted = isDarkMode ? Colors.white70 : AdminTheme.textSecondary;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: _sidebarCollapsed ? AdminTheme.sidebarWidthCollapsed : AdminTheme.sidebarWidth,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: AdminTheme.primary,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -108,13 +133,13 @@ class _AdminShellState extends State<AdminShell> {
             mainAxisAlignment: _sidebarCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
               if (!_sidebarCollapsed) const SizedBox(width: 20),
-              Icon(Icons.dashboard, color: AdminTheme.primary, size: 28),
+              const Icon(Icons.dashboard, color: _sidebarTextWhite, size: 28),
               if (!_sidebarCollapsed) ...[
                 const SizedBox(width: 12),
-                Text(
+                const Text(
                   'Admin',
                   style: TextStyle(
-                    color: textColor,
+                    color: _sidebarTextWhite,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -123,12 +148,12 @@ class _AdminShellState extends State<AdminShell> {
             ],
           ),
           const SizedBox(height: 32),
-          ..._sections.map((e) => _navItem(context, e.$1, e.$2, e.$3, isDarkMode)),
+          ..._sections.map((e) => _navItem(context, e.$1, e.$2, e.$3)),
           const Spacer(),
           IconButton(
             icon: Icon(
               _sidebarCollapsed ? Icons.chevron_right : Icons.chevron_left,
-              color: textMuted,
+              color: _sidebarTextMuted,
             ),
             onPressed: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
           ),
@@ -138,13 +163,12 @@ class _AdminShellState extends State<AdminShell> {
     );
   }
 
-  Widget _navItem(BuildContext context, AdminSection section, IconData icon, String label, bool isDarkMode) {
+  Widget _navItem(BuildContext context, AdminSection section, IconData icon, String label) {
     final isSelected = widget.currentSection == section;
-    final mutedColor = isDarkMode ? Colors.white70 : AdminTheme.textSecondary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Material(
-        color: isSelected ? AdminTheme.primary.withOpacity(0.2) : Colors.transparent,
+        color: isSelected ? _sidebarTextWhite.withOpacity(0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(AdminTheme.radiusButton),
         child: InkWell(
           onTap: () => widget.onSectionChanged(section),
@@ -159,14 +183,14 @@ class _AdminShellState extends State<AdminShell> {
                 Icon(
                   icon,
                   size: 22,
-                  color: isSelected ? AdminTheme.primary : mutedColor,
+                  color: isSelected ? _sidebarTextWhite : _sidebarTextMuted,
                 ),
                 if (!_sidebarCollapsed) ...[
                   const SizedBox(width: 12),
                   Text(
                     label,
                     style: TextStyle(
-                      color: isSelected ? AdminTheme.primary : mutedColor,
+                      color: isSelected ? _sidebarTextWhite : _sidebarTextMuted,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                       fontSize: 14,
                     ),
@@ -181,25 +205,22 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   Drawer? _buildDrawer(BuildContext context, bool isDarkMode) {
-    final bgColor = isDarkMode ? Theme.of(context).cardTheme.color ?? AdminTheme.cardBgDark : _adminBarColorLight;
-    final textColor = isDarkMode ? Colors.white : AdminTheme.textPrimary;
-    final mutedColor = isDarkMode ? Colors.white70 : AdminTheme.textSecondary;
     return Drawer(
-      backgroundColor: bgColor,
+      backgroundColor: AdminTheme.primary,
       child: ListView(
         padding: const EdgeInsets.only(top: 24),
         children: [
-          ListTile(
-            leading: const Icon(Icons.dashboard, color: AdminTheme.primary, size: 28),
-            title: Text('Admin', style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold)),
+          const ListTile(
+            leading: Icon(Icons.dashboard, color: _sidebarTextWhite, size: 28),
+            title: Text('Admin', style: TextStyle(color: _sidebarTextWhite, fontSize: 20, fontWeight: FontWeight.bold)),
           ),
-          Divider(color: isDarkMode ? Colors.white24 : Colors.black12),
+          const Divider(color: _sidebarTextMuted),
           ..._sections.map((e) => ListTile(
-            leading: Icon(e.$2, color: widget.currentSection == e.$1 ? AdminTheme.primary : mutedColor),
+            leading: Icon(e.$2, color: widget.currentSection == e.$1 ? _sidebarTextWhite : _sidebarTextMuted),
             title: Text(
               e.$3,
               style: TextStyle(
-                color: widget.currentSection == e.$1 ? AdminTheme.primary : mutedColor,
+                color: widget.currentSection == e.$1 ? _sidebarTextWhite : _sidebarTextMuted,
                 fontWeight: widget.currentSection == e.$1 ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -217,10 +238,16 @@ class _AdminShellState extends State<AdminShell> {
     final barColor = isDarkMode ? _adminBarColorDark : _adminBarColorLight;
     final barDecoration = BoxDecoration(
       color: barColor,
+      border: Border(
+        bottom: BorderSide(
+          color: isDarkMode ? AdminTheme.borderDark : AdminTheme.primary.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 4,
+          color: Colors.black.withOpacity(isDarkMode ? 0.2 : 0.06),
+          blurRadius: 8,
           offset: const Offset(0, 2),
         ),
       ],
@@ -323,7 +350,10 @@ class _AdminShellState extends State<AdminShell> {
                 (route) => false,
               );
             },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Logout'),
           ),
         ],

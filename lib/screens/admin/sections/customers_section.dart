@@ -222,10 +222,10 @@ class _CustomersSectionState extends State<CustomersSection> {
                 _searchQuery = v;
                 _customers = _applySearch(_allCustomers, v);
               }),
-              decoration: const InputDecoration(
+              decoration: AdminTheme.inputDecoration(
+                context,
                 hintText: 'Search Customers…',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.search),
                 isDense: true,
               ),
             ),

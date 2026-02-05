@@ -15,10 +15,24 @@ class AdminFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: AdminTheme.elevationCard,
-      shape: RoundedRectangleBorder(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AdminTheme.filterBarBgDark : AdminTheme.filterBarBg;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
         borderRadius: BorderRadius.circular(AdminTheme.radiusCard),
+        border: Border.all(
+          color: isDark ? AdminTheme.borderDark : AdminTheme.border,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -36,7 +50,9 @@ class AdminFilterBar extends StatelessWidget {
                     onPressed: onClearFilters,
                     icon: const Icon(Icons.clear_all, size: 18),
                     label: const Text('Clear Filters'),
-                    style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),

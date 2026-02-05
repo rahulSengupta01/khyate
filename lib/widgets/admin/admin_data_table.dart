@@ -27,29 +27,51 @@ class AdminSimpleTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final surfaceColor = theme.colorScheme.surface;
+    final isDark = theme.brightness == Brightness.dark;
+    final headerBg = isDark ? AdminTheme.tableHeaderBgDark : AdminTheme.tableHeaderBg;
+    final headerText = isDark ? AdminTheme.textOnPrimary : AdminTheme.primaryDark;
     final onSurface = theme.colorScheme.onSurface;
     final onSurfaceVariant = theme.colorScheme.onSurfaceVariant;
-    return Card(
-      elevation: AdminTheme.elevationCard,
-      shape: RoundedRectangleBorder(
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AdminTheme.cardBgDark : Colors.white,
         borderRadius: BorderRadius.circular(AdminTheme.radiusCard),
+        border: Border.all(color: isDark ? AdminTheme.borderDark : AdminTheme.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(surfaceColor),
+              headingRowHeight: 52,
+              dataRowMinHeight: 48,
+              dataRowMaxHeight: 56,
+              horizontalMargin: 20,
+              columnSpacing: 24,
+              headingRowColor: WidgetStateProperty.all(headerBg),
+              dividerThickness: 1,
               columns: columnLabels
                   .map((c) => DataColumn(
-                        label: Text(
-                          c,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: onSurface,
-                            fontSize: 13,
+                        label: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            c,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: headerText,
+                              fontSize: 13,
+                              letterSpacing: 0.2,
+                            ),
                           ),
                         ),
                       ))
@@ -57,16 +79,24 @@ class AdminSimpleTable extends StatelessWidget {
               rows: isLoading
                   ? List.generate(
                       rowsPerPage,
-                      (_) => DataRow(
+                      (index) => DataRow(
+                        color: WidgetStateProperty.all(
+                          index.isEven ? (isDark ? AdminTheme.cardBgDark : AdminTheme.tableRowAlt) : null,
+                        ),
                         cells: columnLabels
                             .map((_) => const DataCell(SizedBox(height: 24, width: 80, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))))
                             .toList(),
                       ),
                     )
                   : rows
+                      .asMap()
+                      .entries
                       .map(
-                        (cells) => DataRow(
-                          cells: cells.map((c) => DataCell(c)).toList(),
+                        (entry) => DataRow(
+                          color: WidgetStateProperty.all(
+                            entry.key.isEven ? (isDark ? AdminTheme.cardBgDark : AdminTheme.tableRowAlt) : null,
+                          ),
+                          cells: entry.value.map((c) => DataCell(c)).toList(),
                         ),
                       )
                       .toList(),
@@ -75,7 +105,10 @@ class AdminSimpleTable extends StatelessWidget {
           if (onPageChanged != null && totalPages > 1)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(color: surfaceColor),
+              decoration: BoxDecoration(
+                color: isDark ? AdminTheme.surfaceDark : AdminTheme.surface,
+                border: Border(top: BorderSide(color: isDark ? AdminTheme.borderDark : AdminTheme.border)),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
