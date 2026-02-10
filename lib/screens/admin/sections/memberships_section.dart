@@ -3,8 +3,8 @@ import '../package_manager.dart';
 import '../subscription_manager.dart';
 import '../../../widgets/admin/admin_theme.dart';
 
-/// Memberships section: tabbed layout (Programs | Membership).
-/// Programs use subscription data; Membership uses packages.
+/// Memberships section: tabbed layout (Programs | Classes | Membership).
+/// Programs and Classes use subscription data (Classes = one-day programs); Membership uses packages.
 class MembershipsSection extends StatefulWidget {
   const MembershipsSection({super.key});
 
@@ -18,7 +18,7 @@ class _MembershipsSectionState extends State<MembershipsSection> with SingleTick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -38,6 +38,7 @@ class _MembershipsSectionState extends State<MembershipsSection> with SingleTick
           unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           tabs: const [
             Tab(text: 'Programs'),
+            Tab(text: 'Classes'),
             Tab(text: 'Membership'),
           ],
         ),
@@ -47,6 +48,7 @@ class _MembershipsSectionState extends State<MembershipsSection> with SingleTick
             controller: _tabController,
             children: [
               _wrapPadding(const SubscriptionManager(title: 'Programs')),
+              _wrapPadding(const SubscriptionManager(title: 'Classes')),
               _wrapPadding(PackageManager()),
             ],
           ),

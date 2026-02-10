@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../services/auth_service.dart';
+import '../services/master_data_service.dart';
 import '../services/user_profile_service.dart';
 import 'login_screen.dart';
 import 'change_password_screen.dart';
@@ -41,6 +42,8 @@ bool phoneValid = true;
 String fullPhone = "";
 String? phoneValidationMessage;
 int _profileImageCacheKey = DateTime.now().millisecondsSinceEpoch;
+/// Backend expects country as ObjectId; store it when loading profile.
+String? _storedCountryId;
 
 
   @override
@@ -212,10 +215,26 @@ Future<void> loadProfile() async {
       
       // Handle country - could be ObjectId or populated object
       if (userData['country'] != null) {
-        if (userData['country'] is Map) {
-          country.text = userData['country']['name'] ?? '';
+        final countryVal = userData['country'];
+        if (countryVal is Map) {
+          country.text = (countryVal['name'] ?? countryVal['country_name'] ?? countryVal['countryName'] ?? '').toString();
+          _storedCountryId = (countryVal['_id'] ?? countryVal['id'])?.toString();
         } else {
-          country.text = userData['country'].toString();
+          _storedCountryId = countryVal.toString();
+          // Resolve ID to name for display via master data
+          try {
+            final countries = await MasterDataService().getAllCountries();
+            for (final c in countries) {
+              final id = (c is Map ? (c['_id'] ?? c['id'])?.toString() : null) ?? '';
+              if (id == _storedCountryId) {
+                country.text = (c is Map ? (c['name'] ?? c['country_name'] ?? c['countryName'] ?? '') : '').toString();
+                break;
+              }
+            }
+            if (country.text.isEmpty) country.text = _storedCountryId ?? '';
+          } catch (_) {
+            country.text = _storedCountryId ?? '';
+          }
         }
       }
       
@@ -1288,11 +1307,33 @@ buildCard(
       // Store full phone number in phone.text for database
       phone.text = fullPhone;
 
-      await updateSection({
+      // Backend expects country as ObjectId, not name. Resolve name to ID.
+      String? countryId;
+      try {
+        final countries = await MasterDataService().getAllCountries();
+        final nameLower = selectedCountryName.trim().toLowerCase();
+        for (final c in countries) {
+          final name = (c is Map ? (c['name'] ?? c['country_name'] ?? c['countryName'] ?? '') : '').toString().trim().toLowerCase();
+          if (name == nameLower) {
+            countryId = (c is Map ? (c['_id'] ?? c['id'])?.toString() : null);
+            if (countryId != null && countryId.isNotEmpty) {
+              _storedCountryId = countryId;
+              break;
+            }
+          }
+        }
+        if (countryId == null || countryId.isEmpty) countryId = _storedCountryId;
+      } catch (_) {
+        countryId = _storedCountryId;
+      }
+
+      final updates = <String, dynamic>{
         "phone": fullPhone,
-        "country": selectedCountryName,
         "address": address.text,
-      });
+      };
+      if (countryId != null && countryId.isNotEmpty) updates["country"] = countryId;
+
+      await updateSection(updates);
 
       // Re-hydrate phone to extract local number for display
       _hydratePhoneForUi();

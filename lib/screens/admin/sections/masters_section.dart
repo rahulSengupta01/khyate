@@ -20,14 +20,16 @@ class MastersSection extends StatefulWidget {
 class _MastersSectionState extends State<MastersSection> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _masterDataService = MasterDataService();
+  final _locationSearchController = TextEditingController();
+  List<dynamic> _allLocations = [];
   List<dynamic> _locations = [];
+  List<dynamic> _allCategories = [];
   List<dynamic> _categories = [];
   /// Resolve country/city IDs to names when API returns only IDs (not populated).
   final Map<String, String> _countryNameById = {};
   final Map<String, String> _cityNameById = {};
   bool _loadingLocations = false;
   bool _loadingCategories = false;
-  String _locationSearch = '';
   String _categorySearch = '';
   int _locationPage = 1;
   int _categoryPage = 1;
@@ -43,24 +45,76 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
 
   @override
   void dispose() {
+    _locationSearchController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _applyLocationSearch() {
+    final query = _locationSearchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      setState(() => _locations = List<dynamic>.from(_allLocations));
+      return;
+    }
+    setState(() {
+      _locations = _allLocations.where((raw) {
+        if (raw is! Map) return false;
+        final loc = raw as Map;
+        final countryStr = _getLocationCountryDisplay(loc);
+        final cityStr = _getLocationCityDisplay(loc);
+        final landmark = (loc['landmark'] ?? loc['name'] ?? '').toString().toLowerCase();
+        final streetName = (loc['streetName'] ?? loc['address'] ?? '').toString().toLowerCase();
+        final coords = _formatLocationCoordinates(loc).toLowerCase();
+        return countryStr.toLowerCase().contains(query) ||
+            cityStr.toLowerCase().contains(query) ||
+            landmark.contains(query) ||
+            streetName.contains(query) ||
+            coords.contains(query);
+      }).toList();
+    });
+  }
+
+  String _getLocationCountryDisplay(Map<dynamic, dynamic> loc) {
+    final countryVal = loc['country'] ?? loc['countryId'];
+    if (countryVal == null) return '';
+    if (countryVal is Map) {
+      final name = (countryVal['name'] ?? countryVal['country_name'] ?? countryVal['countryName'] ?? '').toString();
+      if (name.isNotEmpty) return name;
+      final id = (countryVal['_id'] ?? countryVal['id'])?.toString();
+      if (id != null) return _countryNameById[id] ?? id;
+      return '';
+    }
+    return _countryNameById[countryVal.toString()] ?? countryVal.toString();
+  }
+
+  String _getLocationCityDisplay(Map<dynamic, dynamic> loc) {
+    final cityVal = loc['city'] ?? loc['cityId'];
+    if (cityVal == null) return '';
+    if (cityVal is Map) {
+      final name = (cityVal['name'] ?? cityVal['city_name'] ?? cityVal['cityName'] ?? '').toString();
+      if (name.isNotEmpty) return name;
+      final id = (cityVal['_id'] ?? cityVal['id'])?.toString();
+      if (id != null) return _cityNameById[id] ?? id;
+      return '';
+    }
+    return _cityNameById[cityVal.toString()] ?? cityVal.toString();
   }
 
   Future<void> _loadLocations() async {
     setState(() => _loadingLocations = true);
     try {
+      final searchQuery = _locationSearchController.text.trim();
       final list = await _masterDataService.getAllLocationMasters(
         page: _locationPage,
-        limit: _limit,
-        search: _locationSearch.isEmpty ? null : _locationSearch,
+        limit: _limit * 20,
+        search: searchQuery.isEmpty ? null : searchQuery,
       );
       final countryIds = <String>{};
       final cityIds = <String>{};
       for (final loc in list) {
         if (loc is! Map) continue;
-        final c = loc['country'];
-        final city = loc['city'];
+        final c = loc['country'] ?? loc['countryId'];
+        final city = loc['city'] ?? loc['cityId'];
         if (c is Map) {
           final id = (c['_id'] ?? c['id'])?.toString();
           if (id != null && id.isNotEmpty) countryIds.add(id);
@@ -92,13 +146,14 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
       } catch (_) {}
       if (mounted) {
         setState(() {
-          _locations = list;
+          _allLocations = list;
           _countryNameById.clear();
           _countryNameById.addAll(countryNameById);
           _cityNameById.clear();
           _cityNameById.addAll(cityNameById);
           _loadingLocations = false;
         });
+        _applyLocationSearch();
       }
     } catch (e) {
       if (mounted) setState(() => _loadingLocations = false);
@@ -106,19 +161,34 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
     }
   }
 
-  /// Extract coordinates from various API response shapes.
+  /// Extract coordinates from various API response shapes (array [lat,lng], GeoJSON, or flat lat/lng).
   String _formatLocationCoordinates(Map<dynamic, dynamic> loc) {
+    // location as array [lat, lng] or [lng, lat]
     final locArr = loc['location'];
     if (locArr is List && locArr.length >= 2) {
       final a = locArr[0]?.toString().trim() ?? '';
       final b = locArr[1]?.toString().trim() ?? '';
       if (a.isNotEmpty || b.isNotEmpty) return '$a, $b';
     }
+    // GeoJSON: location.coordinates = [lng, lat]
+    if (locArr is Map) {
+      final coords = locArr['coordinates'];
+      if (coords is List && coords.length >= 2) {
+        final a = coords[0]?.toString().trim() ?? '';
+        final b = coords[1]?.toString().trim() ?? '';
+        if (a.isNotEmpty || b.isNotEmpty) return '$a, $b';
+      }
+    }
     final coordsObj = loc['coordinates'];
     if (coordsObj is Map) {
       final lat = (coordsObj['lat'] ?? coordsObj['latitude'])?.toString().trim() ?? '';
       final lng = (coordsObj['lng'] ?? coordsObj['longitude'])?.toString().trim() ?? '';
       if (lat.isNotEmpty || lng.isNotEmpty) return '$lat, $lng';
+    }
+    if (coordsObj is List && coordsObj.length >= 2) {
+      final a = coordsObj[0]?.toString().trim() ?? '';
+      final b = coordsObj[1]?.toString().trim() ?? '';
+      if (a.isNotEmpty || b.isNotEmpty) return '$a, $b';
     }
     final lat = loc['latitude']?.toString().trim() ?? '';
     final lng = loc['longitude']?.toString().trim() ?? '';
@@ -130,11 +200,32 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
     setState(() => _loadingCategories = true);
     try {
       final list = await _masterDataService.getAllCategories();
-      if (mounted) setState(() { _categories = list is List ? list : []; _loadingCategories = false; });
+      if (mounted) {
+        setState(() {
+          _allCategories = list is List ? List<dynamic>.from(list) : [];
+          _loadingCategories = false;
+        });
+        _applyCategorySearch();
+      }
     } catch (e) {
       if (mounted) setState(() => _loadingCategories = false);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
+  }
+
+  void _applyCategorySearch() {
+    final query = _categorySearch.trim().toLowerCase();
+    if (query.isEmpty) {
+      setState(() => _categories = List<dynamic>.from(_allCategories));
+      return;
+    }
+    setState(() {
+      _categories = _allCategories.where((raw) {
+        final cat = raw is Map ? raw as Map : <dynamic, dynamic>{};
+        final name = (cat['cName'] ?? cat['name'] ?? '').toString().toLowerCase();
+        return name.contains(query);
+      }).toList();
+    });
   }
 
   @override
@@ -173,15 +264,28 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
         children: [
           AdminFilterBar(
             filters: const [],
-            searchField: TextField(
-              onChanged: (v) => setState(() => _locationSearch = v),
-              onSubmitted: (_) => _loadLocations(),
-              decoration: AdminTheme.inputDecoration(
-                context,
-                hintText: 'Search Location…',
-                prefixIcon: const Icon(Icons.search),
-                isDense: true,
-              ),
+            searchField: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _locationSearchController,
+                    onSubmitted: (_) => _loadLocations(),
+                    decoration: AdminTheme.inputDecoration(
+                      context,
+                      hintText: 'Search Location…',
+                      prefixIcon: const Icon(Icons.search),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: _applyLocationSearch,
+                  icon: const Icon(Icons.search, size: 20),
+                  label: const Text('Search'),
+                  style: AdminTheme.primaryButtonStyle,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -190,7 +294,7 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
             action: FilledButton.icon(
               onPressed: () => _showAddLocationModal(context),
               icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add New Location'),
+              label: const Text('Add'),
               style: AdminTheme.primaryButtonStyle,
             ),
             child: _locations.isEmpty && !_loadingLocations
@@ -205,38 +309,11 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
                     rows: _locations.asMap().entries.map((e) {
                       final i = e.key + 1;
                       final loc = e.value as Map;
-                      // Country: populated object, or resolve ID from cache
-                      String country = '';
-                      final countryVal = loc['country'];
-                      if (countryVal is Map) {
-                        country = (countryVal['name'] ?? countryVal['country_name'] ?? countryVal['countryName'] ?? '').toString();
-                        if (country.isEmpty) {
-                          final id = (countryVal['_id'] ?? countryVal['id'])?.toString();
-                          if (id != null) country = _countryNameById[id] ?? id;
-                        }
-                      } else if (countryVal != null) {
-                        final id = countryVal.toString();
-                        country = _countryNameById[id] ?? id;
-                      }
-                      // City: populated object, or resolve ID from cache
-                      String city = '';
-                      final cityVal = loc['city'];
-                      if (cityVal is Map) {
-                        city = (cityVal['name'] ?? cityVal['city_name'] ?? cityVal['cityName'] ?? '').toString();
-                        if (city.isEmpty) {
-                          final id = (cityVal['_id'] ?? cityVal['id'])?.toString();
-                          if (id != null) city = _cityNameById[id] ?? id;
-                        }
-                      } else if (cityVal != null) {
-                        final id = cityVal.toString();
-                        city = _cityNameById[id] ?? id;
-                      }
-                      // Landmark / name
+                      final country = _getLocationCountryDisplay(loc);
+                      final city = _getLocationCityDisplay(loc);
                       final landmark = (loc['landmark'] ?? loc['name'] ?? '').toString();
-                      // Street name / address
                       final streetName = (loc['streetName'] ?? loc['address'] ?? '').toString();
-                      // Coordinates: location array, coordinates object, or latitude/longitude
-                      String coords = _formatLocationCoordinates(loc);
+                      final coords = _formatLocationCoordinates(loc);
                       final locId = (loc['_id'] ?? loc['id'])?.toString() ?? '';
                       return [
                         Text('$i'),
@@ -270,14 +347,31 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
         children: [
           AdminFilterBar(
             filters: const [],
-            searchField: TextField(
-              onChanged: (v) => setState(() => _categorySearch = v),
-              decoration: AdminTheme.inputDecoration(
-                context,
-                hintText: 'Search Categories…',
-                prefixIcon: const Icon(Icons.search),
-                isDense: true,
-              ),
+            searchField: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (v) => setState(() {
+                      _categorySearch = v;
+                      _applyCategorySearch();
+                    }),
+                    onSubmitted: (_) => _applyCategorySearch(),
+                    decoration: AdminTheme.inputDecoration(
+                      context,
+                      hintText: 'Search Categories…',
+                      prefixIcon: const Icon(Icons.search),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: _applyCategorySearch,
+                  icon: const Icon(Icons.search, size: 20),
+                  label: const Text('Search'),
+                  style: AdminTheme.primaryButtonStyle,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -286,7 +380,7 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
             action: FilledButton.icon(
               onPressed: () => _showAddCategoryModal(context),
               icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add New Category'),
+              label: const Text('Add'),
               style: AdminTheme.primaryButtonStyle,
             ),
             child: _categories.isEmpty && !_loadingCategories

@@ -3,6 +3,7 @@ import 'package:Outbox/providers/cart_provider.dart';
 import 'package:Outbox/services/purchase_status_service.dart';
 import 'package:Outbox/services/review_service.dart';
 import 'package:Outbox/widgets/review_widget.dart';
+import 'package:Outbox/utils/card_display_utils.dart';
 import 'package:flutter/material.dart';
 // import 'package:khyate_b2b/models/cart_model.dart';
 // import 'package:khyate_b2b/providers/cart_provider.dart';
@@ -169,7 +170,7 @@ class MembershipCard extends StatelessWidget {
                                   SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      data.date,
+                                      formatCardDate(data.date),
                                       style: TextStyle(
                                         color: subTextColor,
                                         fontSize: 12,

@@ -1,4 +1,5 @@
 import 'package:Outbox/services/review_service.dart';
+import 'package:Outbox/utils/card_display_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Outbox/models/membership_card_model.dart';
@@ -212,7 +213,7 @@ class MembershipModal extends StatelessWidget {
                               Icon(Icons.calendar_today, color: Color(0xFFDF50B7), size: 20),
                               SizedBox(width: 8),
                               Text(
-                                data.date,
+                                formatCardDate(data.date),
                                 style: TextStyle(color: subTextColor, fontSize: 15),
                               ),
                             ],

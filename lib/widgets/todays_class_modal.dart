@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:Outbox/models/cart_model.dart';
 import 'package:Outbox/providers/cart_provider.dart';
 import 'package:Outbox/services/purchase_status_service.dart';
+import 'package:Outbox/utils/card_display_utils.dart';
 import 'package:Outbox/widgets/review_widget.dart';
 import 'package:Outbox/widgets/todays_classes_list.dart';
 
@@ -258,7 +259,7 @@ class TodaysClassModal extends StatelessWidget {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        data.date,
+                                        formatCardDate(data.date),
                                         style: TextStyle(color: subTextColor, fontSize: 15),
                                       ),
                                     ),

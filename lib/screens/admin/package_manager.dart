@@ -21,6 +21,7 @@ class _PackageManagerState extends State<PackageManager> {
   String? _selectedDuration = 'monthly';
   
   File? _selectedImage;
+  List<dynamic> _allPackages = [];
   List<dynamic> _packages = [];
   bool _isLoading = false;
   int _page = 1;
@@ -35,6 +36,25 @@ class _PackageManagerState extends State<PackageManager> {
   void initState() {
     super.initState();
     _loadPackages();
+    _searchController.addListener(_applySearchFilter);
+  }
+
+  void _applySearchFilter() {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      setState(() => _packages = List<dynamic>.from(_allPackages));
+      return;
+    }
+    setState(() {
+      _packages = _allPackages.where((raw) {
+        final p = raw is Map ? Map<String, dynamic>.from(raw.map((k, v) => MapEntry(k.toString(), v))) : <String, dynamic>{};
+        final name = (p['name']?.toString() ?? '').toLowerCase();
+        final price = (p['price']?.toString() ?? '').toLowerCase();
+        final duration = (p['duration']?.toString() ?? '').toLowerCase();
+        final desc = (p['description']?.toString() ?? '').toLowerCase();
+        return name.contains(query) || price.contains(query) || duration.contains(query) || desc.contains(query);
+      }).toList();
+    });
   }
 
   /// Parse packages from API result - same structure as membership_carousel.
@@ -60,17 +80,19 @@ class _PackageManagerState extends State<PackageManager> {
       final result = await _packageService.getAllPackages(
         page: _page,
         limit: 100,
-        search: _searchController.text.isEmpty ? null : _searchController.text,
+        search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
       );
       if (mounted) {
         setState(() {
-          _packages = _parsePackagesFromResult(result);
+          _allPackages = _parsePackagesFromResult(result);
           _isLoading = false;
         });
+        _applySearchFilter();
       }
     } catch (e) {
       if (mounted) {
         setState(() {
+          _allPackages = [];
           _packages = [];
           _isLoading = false;
         });
@@ -683,7 +705,7 @@ class _PackageManagerState extends State<PackageManager> {
                       ),
                       const SizedBox(width: 12),
                       FilledButton.icon(
-                        onPressed: _loadPackages,
+                        onPressed: _applySearchFilter,
                         icon: const Icon(Icons.search, size: 20),
                         label: const Text('Search'),
                         style: AdminTheme.primaryButtonStyle,
@@ -782,6 +804,7 @@ class _PackageManagerState extends State<PackageManager> {
 
   @override
   void dispose() {
+    _searchController.removeListener(_applySearchFilter);
     _nameController.dispose();
     _priceController.dispose();
     _numberOfClassesController.dispose();

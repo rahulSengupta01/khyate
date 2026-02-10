@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:Outbox/widgets/todays_class_modal.dart';
 import '../services/subscription_service.dart';
+import '../utils/card_display_utils.dart';
 import '../services/master_data_service.dart';
 
 /// Model for Today's Classes
@@ -152,9 +153,7 @@ Future<List<TodayClassData>> fetchTodaysClasses({
           : trainer?.toString() ?? 'Unknown Trainer';
       
       final address = sub['Address'] is Map ? sub['Address'] : {};
-      final location = address['location']?.toString() ?? 
-                      address['addressLine1']?.toString() ?? 
-                      'Location TBD';
+      final location = formatCardLocation(address);
       
       return TodayClassData(
         id: id,

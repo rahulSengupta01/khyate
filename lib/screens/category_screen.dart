@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/membership_card_model.dart';
+import '../utils/card_display_utils.dart';
 import '../services/subscription_service.dart';
 import '../services/subscription_booking_service.dart';
 import '../widgets/membership_card.dart';
@@ -64,7 +65,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             ? '${trainer['first_name'] ?? ''} ${trainer['last_name'] ?? ''}'.trim()
             : trainer?.toString() ?? 'Unknown';
         final address = sub['Address'] is Map ? sub['Address'] : {};
-        final location = address['location']?.toString() ?? address['addressLine1']?.toString() ?? 'Location TBD';
+        final location = formatCardLocation(address);
         final dates = sub['date'];
         String dateStr = '';
         if (dates is List && dates.isNotEmpty) dateStr = dates.first?.toString() ?? '';

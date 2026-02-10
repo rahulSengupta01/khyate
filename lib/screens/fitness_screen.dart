@@ -9,6 +9,7 @@ import '../widgets/membership_card.dart';
 import '../widgets/fitness_session_modal.dart';
 import '../widgets/membership_modal.dart';
 import '../models/membership_card_model.dart';
+import '../utils/card_display_utils.dart';
 import '../services/notification_service.dart';
 import '../services/subscription_service.dart';
 import '../services/package_service.dart';
@@ -222,9 +223,7 @@ class _FitnessScreenState extends State<FitnessScreen> {
             : trainer?.toString() ?? 'Unknown Trainer';
         
         final address = sub['Address'] is Map ? sub['Address'] : {};
-        final location = address['location']?.toString() ?? 
-                        address['addressLine1']?.toString() ?? 
-                        'Location TBD';
+        final location = formatCardLocation(address);
         
         final dates = sub['date'];
         String dateStr = '';

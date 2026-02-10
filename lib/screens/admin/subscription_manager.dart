@@ -47,19 +47,39 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
   List<dynamic> _trainers = [];
   List<dynamic> _sessions = [];
   List<dynamic> _locations = []; // LocationMasters
+  List<dynamic> _allSubscriptions = [];
   List<dynamic> _subscriptions = [];
   bool _isLoading = false;
   int _page = 1;
-  final int _limit = 10;
+  final int _limit = 100;
 
   @override
   void initState() {
     super.initState();
+    if (widget.title == 'Classes') _isSingleClass = true;
     _loadCategories();
     _loadTrainers();
     _loadSessions();
     _loadLocations();
     _loadSubscriptions();
+    _searchController.addListener(_applySearchFilter);
+  }
+
+  void _applySearchFilter() {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      setState(() => _subscriptions = List<dynamic>.from(_allSubscriptions));
+      return;
+    }
+    setState(() {
+      _subscriptions = _allSubscriptions.where((raw) {
+        final s = raw is Map ? Map<String, dynamic>.from(raw.map((k, v) => MapEntry(k.toString(), v))) : <String, dynamic>{};
+        final name = (s['name']?.toString() ?? '').toLowerCase();
+        final desc = (s['description']?.toString() ?? '').toLowerCase();
+        final price = (s['price']?.toString() ?? '').toLowerCase();
+        return name.contains(query) || desc.contains(query) || price.contains(query);
+      }).toList();
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -140,18 +160,26 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       if (mounted) {
         setState(() {
           final r = result as dynamic;
+          List<dynamic> raw = [];
           if (r == null) {
-            _subscriptions = [];
+            raw = [];
           } else if (r is List) {
-            _subscriptions = List<dynamic>.from(r);
+            raw = List<dynamic>.from(r);
           } else if (r is Map) {
             final data = r['subscriptions'] ?? r['data'] ?? [];
-            _subscriptions = data is List ? List<dynamic>.from(data) : [];
+            raw = data is List ? List<dynamic>.from(data) : [];
+          }
+          // Filter by type: Programs = multi-day, Classes = one-day (isSingleClass)
+          if (widget.title == 'Programs') {
+            _allSubscriptions = raw.where((s) => _isSubscriptionSingleClass(s) != true).toList();
+          } else if (widget.title == 'Classes') {
+            _allSubscriptions = raw.where((s) => _isSubscriptionSingleClass(s) == true).toList();
           } else {
-            _subscriptions = [];
+            _allSubscriptions = raw;
           }
           _isLoading = false;
         });
+        _applySearchFilter();
       }
     } catch (e) {
       if (mounted) {
@@ -236,6 +264,16 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
     return '';
   }
 
+  /// Whether the subscription is a single-class (one-day) item.
+  static bool? _isSubscriptionSingleClass(dynamic subscription) {
+    if (subscription is! Map) return null;
+    final v = subscription['isSingleClass'];
+    if (v == null) return null;
+    if (v is bool) return v;
+    if (v is String) return v.toLowerCase() == 'true';
+    return null;
+  }
+
   /// Get id from a subscription field that may be an object (with _id) or a string.
   static String? _getIdFromField(dynamic value) {
     if (value == null) return null;
@@ -293,6 +331,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       _editingSubscription = null;
       _rangeStartDate = null;
       _rangeEndDate = null;
+      _isSingleClass = widget.title == 'Classes';
     });
   }
 
@@ -950,7 +989,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                       ),
                       const SizedBox(width: 12),
                       FilledButton.icon(
-                        onPressed: _loadSubscriptions,
+                        onPressed: _applySearchFilter,
                         icon: const Icon(Icons.search, size: 20),
                         label: const Text('Search'),
                         style: AdminTheme.primaryButtonStyle,
@@ -1048,6 +1087,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
 
   @override
   void dispose() {
+    _searchController.removeListener(_applySearchFilter);
     _nameController.dispose();
     _priceController.dispose();
     _descriptionController.dispose();

@@ -27,6 +27,7 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
   File? _selectedImage;
   String? _selectedDiscountType = 'percentage';
   bool _isActive = true;
+  List<dynamic> _allPromoCodes = [];
   List<dynamic> _promoCodes = [];
   bool _isLoading = false;
   int _page = 1;
@@ -36,6 +37,7 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
   void initState() {
     super.initState();
     _loadPromoCodes();
+    _searchController.addListener(_applySearchFilter);
   }
 
   Future<void> _loadPromoCodes() async {
@@ -48,9 +50,10 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
           : <dynamic>[];
       if (!mounted) return;
       setState(() {
-        _promoCodes = list;
+        _allPromoCodes = list;
         _isLoading = false;
       });
+      _applySearchFilter();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -75,6 +78,33 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
     }
   }
 
+  void _applySearchFilter() {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      setState(() => _promoCodes = List<dynamic>.from(_allPromoCodes));
+      return;
+    }
+    setState(() {
+      _promoCodes = _allPromoCodes.where((raw) {
+        final promo = raw is Map
+            ? Map<String, dynamic>.from(
+                raw.map((k, v) => MapEntry(k.toString(), v)),
+              )
+            : <String, dynamic>{};
+        final code = (promo['code']?.toString() ?? '').toLowerCase();
+        final description = (promo['description']?.toString() ?? '').toLowerCase();
+        final terms = (promo['termsAndConditions']?.toString() ?? '').toLowerCase();
+        final discountValue = (promo['discountValue']?.toString() ?? '').toLowerCase();
+        final discountType = (promo['discountType']?.toString() ?? '').toLowerCase();
+        return code.contains(query) ||
+            description.contains(query) ||
+            terms.contains(query) ||
+            discountValue.contains(query) ||
+            discountType.contains(query);
+      }).toList();
+    });
+  }
+
   Future<void> _pickDate(TextEditingController controller) async {
     final picked = await showDatePicker(
       context: context,
@@ -88,12 +118,41 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
   }
 
   Future<void> _showEditDialog(Map<String, dynamic> promo) async {
+    final editCodeController = TextEditingController(
+      text: (promo['code']?.toString() ?? '').trim(),
+    );
     final editDiscountValueController = TextEditingController(
       text: (promo['discountValue']?.toString() ?? '').trim(),
     );
-    final editValidToController = TextEditingController(
+    final editMinOrderController = TextEditingController(
+      text: (promo['minOrderAmount']?.toString() ?? '').trim(),
+    );
+    final editMaxDiscountController = TextEditingController(
+      text: (promo['maxDiscountAmount']?.toString() ?? '').trim(),
+    );
+    final editStartDateController = TextEditingController(
+      text: (promo['startDate'] ?? promo['validFrom'] ?? '').toString().trim(),
+    );
+    final editEndDateController = TextEditingController(
       text: (promo['validTo'] ?? promo['endDate'] ?? '').toString().trim(),
     );
+    final editMaxUsesController = TextEditingController(
+      text: (promo['maxUses']?.toString() ?? '').trim(),
+    );
+    final editTermsController = TextEditingController(
+      text: (promo['termsAndConditions']?.toString() ?? '').trim(),
+    );
+    final editDescriptionController = TextEditingController(
+      text: (promo['description']?.toString() ?? '').trim(),
+    );
+    final editApplyAfterController = TextEditingController(
+      text: (promo['applyOfferAfterOrders'] ?? promo['apply_offer_after_orders']?.toString() ?? '').toString().trim(),
+    );
+    String? editDiscountType = (promo['discountType']?.toString() ?? 'percentage').toLowerCase().contains('percent')
+        ? 'percentage'
+        : (promo['discountType']?.toString() ?? 'percentage');
+    bool editIsActive = promo['isActive'] == true ||
+        promo['isActive']?.toString().toLowerCase() == 'true';
     File? editImage;
     final imageVal = promo['image'] ?? promo['imageUrl'];
     String? editImageUrl = imageVal is String ? imageVal : imageVal?.toString();
@@ -119,7 +178,7 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
                     }
                   },
                   child: Container(
-                    height: 150,
+                    height: 120,
                     width: double.infinity,
                     decoration: AdminTheme.uploadSectionDecoration(context),
                     child: editImage != null
@@ -151,7 +210,7 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
                               ),
                             ],
                           )
-                        : editImageUrl != null
+                        : editImageUrl != null && editImageUrl!.isNotEmpty
                             ? Stack(
                                 fit: StackFit.expand,
                                 children: [
@@ -183,25 +242,104 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
-                                  const SizedBox(height: 8),
-                                  Text('Tap to select image', style: TextStyle(color: AdminTheme.fieldTextMuted(context))),
+                                  Icon(Icons.add_photo_alternate, size: 40, color: AdminTheme.fieldTextMuted(context)),
+                                  const SizedBox(height: 4),
+                                  Text('Tap to select image', style: TextStyle(fontSize: 12, color: AdminTheme.fieldTextMuted(context))),
                                 ],
                               ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editCodeController,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Code *'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: editDiscountType,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Discount Type'),
+                  items: const [
+                    DropdownMenuItem(value: 'percentage', child: Text('Percentage')),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() {
+                      editDiscountType = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: editDiscountValueController,
                   decoration: AdminTheme.inputDecoration(context, labelText: 'Discount Value'),
                   keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextField(
-                  controller: editValidToController,
-                  decoration: AdminTheme.inputDecoration(context, labelText: 'Valid To'),
-                  readOnly: true,
-                  onTap: () => _pickDate(editValidToController),
+                  controller: editMinOrderController,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Min Order Amount'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editMaxDiscountController,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Max Discount Amount'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: editStartDateController,
+                        decoration: AdminTheme.inputDecoration(context, labelText: 'Valid From'),
+                        readOnly: true,
+                        onTap: () => _pickDate(editStartDateController),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: editEndDateController,
+                        decoration: AdminTheme.inputDecoration(context, labelText: 'Valid To'),
+                        readOnly: true,
+                        onTap: () => _pickDate(editEndDateController),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editMaxUsesController,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Max Uses'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editTermsController,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Terms & Conditions'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editDescriptionController,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Description'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editApplyAfterController,
+                  decoration: AdminTheme.inputDecoration(context, labelText: 'Apply Offer After Orders'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  title: const Text('Is Active'),
+                  value: editIsActive,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      editIsActive = value ?? true;
+                    });
+                  },
                 ),
               ],
             ),
@@ -214,16 +352,44 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
             FilledButton(
               style: AdminTheme.primaryButtonStyle,
               onPressed: () async {
+                final code = editCodeController.text.trim();
+                if (code.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a promo code')),
+                  );
+                  return;
+                }
                 try {
                   await _adminService.updatePromoCode(
                     promoCodeId: promo['_id'] ?? promo['id'] ?? '',
                     image: editImage,
+                    code: code,
+                    discountType: editDiscountType,
                     discountValue: editDiscountValueController.text.isEmpty
                         ? null
                         : double.tryParse(editDiscountValueController.text),
-                    endDate: editValidToController.text.isEmpty
+                    description: editDescriptionController.text.trim().isEmpty
                         ? null
-                        : editValidToController.text,
+                        : editDescriptionController.text.trim(),
+                    isActive: editIsActive,
+                    isValidationDate: editStartDateController.text.isNotEmpty || editEndDateController.text.isNotEmpty,
+                    startDate: editStartDateController.text.trim().isEmpty ? null : editStartDateController.text.trim(),
+                    endDate: editEndDateController.text.trim().isEmpty ? null : editEndDateController.text.trim(),
+                    applyOfferAfterOrders: editApplyAfterController.text.trim().isEmpty
+                        ? null
+                        : int.tryParse(editApplyAfterController.text.trim()),
+                    minOrderAmount: editMinOrderController.text.trim().isEmpty
+                        ? null
+                        : double.tryParse(editMinOrderController.text.trim()),
+                    maxDiscountAmount: editMaxDiscountController.text.trim().isEmpty
+                        ? null
+                        : double.tryParse(editMaxDiscountController.text.trim()),
+                    maxUses: editMaxUsesController.text.trim().isEmpty
+                        ? null
+                        : int.tryParse(editMaxUsesController.text.trim()),
+                    termsAndConditions: editTermsController.text.trim().isEmpty
+                        ? null
+                        : editTermsController.text.trim(),
                   );
                   if (context.mounted) {
                     Navigator.pop(context);
@@ -246,6 +412,16 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
         ),
       ),
     );
+    editCodeController.dispose();
+    editDiscountValueController.dispose();
+    editMinOrderController.dispose();
+    editMaxDiscountController.dispose();
+    editStartDateController.dispose();
+    editEndDateController.dispose();
+    editMaxUsesController.dispose();
+    editTermsController.dispose();
+    editDescriptionController.dispose();
+    editApplyAfterController.dispose();
   }
 
   Future<void> _createPromoCode() async {
@@ -584,7 +760,7 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
                       ),
                       const SizedBox(width: 12),
                       FilledButton(
-                        onPressed: _loadPromoCodes,
+                        onPressed: _applySearchFilter,
                         style: AdminTheme.primaryButtonStyle,
                         child: const Text('Search'),
                       ),
@@ -684,6 +860,7 @@ class _PromoCodeManagerState extends State<PromoCodeManager> {
 
   @override
   void dispose() {
+    _searchController.removeListener(_applySearchFilter);
     _codeController.dispose();
     _discountValueController.dispose();
     _minOrderAmountController.dispose();

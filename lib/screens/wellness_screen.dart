@@ -21,6 +21,7 @@ import '../widgets/membership_card.dart';
 import '../widgets/membership_modal.dart';
 import '../widgets/todays_classes_list.dart';
 import '../models/membership_card_model.dart';
+import '../utils/card_display_utils.dart';
 import '../services/subscription_booking_service.dart';
 import '../services/notification_service.dart';
 
@@ -237,9 +238,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
             : trainer?.toString() ?? 'Unknown Trainer';
         
         final address = sub['Address'] is Map ? sub['Address'] : {};
-        final location = address['location']?.toString() ?? 
-                        address['addressLine1']?.toString() ?? 
-                        'Location TBD';
+        final location = formatCardLocation(address);
         
         final dates = sub['date'];
         String dateStr = '';

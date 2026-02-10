@@ -1,4 +1,5 @@
 import 'package:Outbox/services/review_service.dart';
+import 'package:Outbox/utils/card_display_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:Outbox/models/cart_model.dart';
@@ -215,7 +216,7 @@ class WellnessModal extends StatelessWidget {
                                       SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          dateStr.isNotEmpty ? dateStr : 'No Date',
+                                          dateStr.isNotEmpty ? formatCardDate(dateStr) : 'No Date',
                                           style: TextStyle(
                                             color: subTextColor,
                                             fontSize: 14,

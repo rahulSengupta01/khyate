@@ -4,6 +4,7 @@ import 'package:Outbox/providers/cart_provider.dart';
 import 'package:Outbox/services/purchase_status_service.dart';
 import 'package:Outbox/services/review_service.dart';
 import 'package:Outbox/widgets/review_widget.dart';
+import 'package:Outbox/utils/card_display_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -270,7 +271,7 @@ class MembershipCarouselModal extends StatelessWidget {
                               const Icon(Icons.calendar_today, color: Color(0xFFDF50B7), size: 20),
                               const SizedBox(width: 8),
                               Text(
-                                "Date: ${data.date}",
+                                "Date: ${formatCardDate(data.date)}",
                                 style: TextStyle(color: subTextColor, fontSize: 15),
                               ),
                             ],

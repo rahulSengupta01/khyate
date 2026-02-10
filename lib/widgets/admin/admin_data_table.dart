@@ -50,9 +50,13 @@ class AdminSimpleTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
               headingRowHeight: 52,
               dataRowMinHeight: 48,
               dataRowMaxHeight: 56,
@@ -100,7 +104,10 @@ class AdminSimpleTable extends StatelessWidget {
                         ),
                       )
                       .toList(),
-            ),
+                  ),
+                ),
+              );
+            },
           ),
           if (onPageChanged != null && totalPages > 1)
             Container(
