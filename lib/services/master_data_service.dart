@@ -562,7 +562,7 @@ class MasterDataService {
     }
   }
 
-  // 3.14 Create Category (multipart)
+  // 3.14 Create Category (multipart). Backend expects cName (not name).
   Future<Map<String, dynamic>?> createCategory({
     required String name,
     required String description,
@@ -571,6 +571,7 @@ class MasterDataService {
   }) async {
     try {
       final fields = <String, String>{
+        'cName': name,
         'name': name,
         'description': description,
         'isActive': isActive.toString(),

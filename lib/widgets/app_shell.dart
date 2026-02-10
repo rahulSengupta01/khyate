@@ -382,19 +382,23 @@ class _AppShellState extends State<AppShell> {
         duration: const Duration(milliseconds: 250),
         child: currentPage,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: _barColor,
-        selectedItemColor: showSelection ? Colors.amberAccent : Colors.white70,
-        unselectedItemColor: Colors.white70,
-        selectedIconTheme: showSelection
-            ? const IconThemeData(color: Colors.amberAccent)
-            : const IconThemeData(color: Colors.white70),
-        selectedLabelStyle:
-            showSelection ? null : const TextStyle(color: Colors.white70),
-        showUnselectedLabels: true,
-        currentIndex: _selectedIndex,
-        onTap: _onNavTapped,
-        items: widget.pages.map((page) {
+      bottomNavigationBar: Container(
+        color: _barColor,
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: showSelection ? Colors.amberAccent : Colors.white70,
+          unselectedItemColor: Colors.white70,
+          selectedIconTheme: showSelection
+              ? const IconThemeData(color: Colors.amberAccent)
+              : const IconThemeData(color: Colors.white70),
+          selectedLabelStyle:
+              showSelection ? null : const TextStyle(color: Colors.white70),
+          showUnselectedLabels: true,
+          currentIndex: _selectedIndex,
+          onTap: _onNavTapped,
+          items: widget.pages.map((page) {
           final bool isCart = page.label.toLowerCase() == 'cart';
           final Widget icon = isCart && cartCount > 0
               ? Stack(
@@ -435,6 +439,7 @@ class _AppShellState extends State<AppShell> {
             label: page.label,
           );
         }).toList(),
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../../../widgets/admin/admin_filter_bar.dart';
 import '../../../widgets/admin/admin_simple_table.dart';
 import '../../../widgets/admin/admin_modal_form.dart';
 import '../../../widgets/admin/admin_empty_state.dart';
+import '../../../widgets/searchable_dropdown.dart';
 import '../../../services/master_data_service.dart';
 
 class MastersSection extends StatefulWidget {
@@ -311,8 +312,14 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () {}),
-                            IconButton(icon: const Icon(Icons.delete, size: 20), onPressed: () {}),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 20),
+                              onPressed: () => _showEditCategoryModal(context, cat),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, size: 20),
+                              onPressed: () => _confirmDeleteCategory(context, cat),
+                            ),
                           ],
                         ),
                       ];
@@ -385,11 +392,20 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
       countries = await _masterDataService.getAllCountries();
       if (countryId != null && countryId.isNotEmpty) cities = await _masterDataService.getCitiesByCountry(countryId);
     } catch (_) {}
+    // Sort alphabetically by display name
+    countries = List<dynamic>.from(countries)
+      ..sort((a, b) => ((a['name'] ?? a['country_name'] ?? '').toString().toLowerCase())
+          .compareTo((b['name'] ?? b['country_name'] ?? '').toString().toLowerCase()));
+    cities = List<dynamic>.from(cities)
+      ..sort((a, b) => ((a['name'] ?? a['city_name'] ?? '').toString().toLowerCase())
+          .compareTo((b['name'] ?? b['city_name'] ?? '').toString().toLowerCase()));
     if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
+          final countryList = countries.map((c) => c is Map ? Map<String, dynamic>.from(c as Map) : <String, dynamic>{}).toList();
+          final cityList = cities.map((c) => c is Map ? Map<String, dynamic>.from(c as Map) : <String, dynamic>{}).toList();
           return AlertDialog(
             title: const Text('Edit Location'),
             content: SingleChildScrollView(
@@ -398,31 +414,40 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<String>(
+                    SearchableDropdown<Map<String, dynamic>>(
+                      label: 'Country *',
                       value: countryId,
-                      decoration: AdminTheme.inputDecoration(ctx, labelText: 'Country *'),
-                      items: countries.map((c) {
-                        final cid = (c['_id'] ?? c['id']).toString();
-                        final n = (c['name'] ?? c['country_name'] ?? '').toString();
-                        return DropdownMenuItem(value: cid, child: Text(n));
-                      }).toList(),
+                      items: countryList,
+                      displayText: (c) => (c['name'] ?? c['country_name'] ?? c['countryName'] ?? '').toString(),
+                      getValue: (c) => (c['_id'] ?? c['id'])?.toString() ?? '',
                       onChanged: (v) async {
                         countryId = v;
                         cityId = null;
-                        cities = v != null ? await _masterDataService.getCitiesByCountry(v) : [];
+                        cities = v != null ? await _masterDataService.getCitiesByCountry(v!) : [];
+                        cities = List<dynamic>.from(cities)
+                          ..sort((a, b) => ((a['name'] ?? a['city_name'] ?? '').toString().toLowerCase())
+                              .compareTo((b['name'] ?? b['city_name'] ?? '').toString().toLowerCase()));
                         setModalState(() {});
                       },
+                      isRequired: true,
+                      prefixIcon: Icons.public,
+                      decoration: AdminTheme.dropdownTriggerDecoration(ctx),
+                      labelStyle: AdminTheme.dropdownLabelStyle(ctx),
+                      valueStyle: AdminTheme.dropdownValueStyle(ctx),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
+                    SearchableDropdown<Map<String, dynamic>>(
+                      label: 'City *',
                       value: cityId,
-                      decoration: AdminTheme.inputDecoration(ctx, labelText: 'City *'),
-                      items: cities.map((c) {
-                        final cid = (c['_id'] ?? c['id']).toString();
-                        final n = (c['name'] ?? c['city_name'] ?? '').toString();
-                        return DropdownMenuItem(value: cid, child: Text(n));
-                      }).toList(),
+                      items: cityList,
+                      displayText: (c) => (c['name'] ?? c['city_name'] ?? c['cityName'] ?? '').toString(),
+                      getValue: (c) => (c['_id'] ?? c['id'])?.toString() ?? '',
                       onChanged: (v) => setModalState(() => cityId = v),
+                      isRequired: true,
+                      prefixIcon: Icons.location_city,
+                      decoration: AdminTheme.dropdownTriggerDecoration(ctx),
+                      labelStyle: AdminTheme.dropdownLabelStyle(ctx),
+                      valueStyle: AdminTheme.dropdownValueStyle(ctx),
                     ),
                     const SizedBox(height: 12),
                     TextField(controller: nameController, decoration: AdminTheme.inputDecoration(ctx, labelText: 'Landmark / Name *')),
@@ -490,12 +515,18 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
     try {
       countries = await _masterDataService.getAllCountries();
     } catch (_) {}
+    // Sort countries alphabetically by display name
+    countries = List<dynamic>.from(countries)
+      ..sort((a, b) => ((a['name'] ?? a['country_name'] ?? '').toString().toLowerCase())
+          .compareTo((b['name'] ?? b['country_name'] ?? '').toString().toLowerCase()));
 
     if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
+          final countryList = countries.map((c) => c is Map ? Map<String, dynamic>.from(c as Map) : <String, dynamic>{}).toList();
+          final cityList = cities.map((c) => c is Map ? Map<String, dynamic>.from(c as Map) : <String, dynamic>{}).toList();
           return AlertDialog(
             title: const Text('Add New Location'),
             content: SingleChildScrollView(
@@ -504,30 +535,40 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<String>(
+                    SearchableDropdown<Map<String, dynamic>>(
+                      label: 'Country *',
                       value: countryId,
-                      decoration: AdminTheme.inputDecoration(ctx, labelText: 'Country *'),
-                      items: countries.map((c) {
-                        final id = (c['_id'] ?? c['id']).toString();
-                        final n = (c['name'] ?? c['country_name'] ?? '').toString();
-                        return DropdownMenuItem(value: id, child: Text(n));
-                      }).toList(),
+                      items: countryList,
+                      displayText: (c) => (c['name'] ?? c['country_name'] ?? c['countryName'] ?? '').toString(),
+                      getValue: (c) => (c['_id'] ?? c['id'])?.toString() ?? '',
                       onChanged: (v) async {
                         countryId = v;
-                        cities = v != null ? await _masterDataService.getCitiesByCountry(v) : [];
+                        cityId = null;
+                        cities = v != null ? await _masterDataService.getCitiesByCountry(v!) : [];
+                        cities = List<dynamic>.from(cities)
+                          ..sort((a, b) => ((a['name'] ?? a['city_name'] ?? '').toString().toLowerCase())
+                              .compareTo((b['name'] ?? b['city_name'] ?? '').toString().toLowerCase()));
                         setModalState(() {});
                       },
+                      isRequired: true,
+                      prefixIcon: Icons.public,
+                      decoration: AdminTheme.dropdownTriggerDecoration(ctx),
+                      labelStyle: AdminTheme.dropdownLabelStyle(ctx),
+                      valueStyle: AdminTheme.dropdownValueStyle(ctx),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
+                    SearchableDropdown<Map<String, dynamic>>(
+                      label: 'City *',
                       value: cityId,
-                      decoration: AdminTheme.inputDecoration(ctx, labelText: 'City *'),
-                      items: cities.map((c) {
-                        final id = (c['_id'] ?? c['id']).toString();
-                        final n = (c['name'] ?? c['city_name'] ?? '').toString();
-                        return DropdownMenuItem(value: id, child: Text(n));
-                      }).toList(),
+                      items: cityList,
+                      displayText: (c) => (c['name'] ?? c['city_name'] ?? c['cityName'] ?? '').toString(),
+                      getValue: (c) => (c['_id'] ?? c['id'])?.toString() ?? '',
                       onChanged: (v) => setModalState(() => cityId = v),
+                      isRequired: true,
+                      prefixIcon: Icons.location_city,
+                      decoration: AdminTheme.dropdownTriggerDecoration(ctx),
+                      labelStyle: AdminTheme.dropdownLabelStyle(ctx),
+                      valueStyle: AdminTheme.dropdownValueStyle(ctx),
                     ),
                     const SizedBox(height: 12),
                     TextField(controller: nameController, decoration: AdminTheme.inputDecoration(ctx, labelText: 'Landmark / Name *')),
@@ -568,6 +609,113 @@ class _MastersSectionState extends State<MastersSection> with SingleTickerProvid
                       Navigator.pop(ctx);
                       _loadLocations();
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location created')));
+                    }
+                  } catch (e) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _confirmDeleteCategory(BuildContext context, Map<dynamic, dynamic> cat) async {
+    final id = (cat['_id'] ?? cat['id'])?.toString() ?? '';
+    if (id.isEmpty) return;
+    final name = (cat['cName'] ?? cat['name'] ?? 'Category').toString();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Category'),
+        content: Text('Are you sure you want to delete "$name"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await _masterDataService.deleteCategory(id);
+      if (mounted) {
+        _loadCategories();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Category deleted')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  void _showEditCategoryModal(BuildContext context, Map<dynamic, dynamic> cat) {
+    final id = (cat['_id'] ?? cat['id'])?.toString() ?? '';
+    if (id.isEmpty) return;
+    final nameController = TextEditingController(text: (cat['cName'] ?? cat['name'] ?? '').toString());
+    final descController = TextEditingController(text: (cat['description'] ?? '').toString());
+    File? imageFile;
+    final existingImageUrl = cat['image'] ?? cat['media'] ?? '';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return AlertDialog(
+            title: const Text('Edit Category'),
+            content: SingleChildScrollView(
+              child: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picker = ImagePicker();
+                        final x = await picker.pickImage(source: ImageSource.gallery);
+                        if (x != null && mounted) setModalState(() => imageFile = File(x.path));
+                      },
+                      icon: const Icon(Icons.upload_file),
+                      label: Text(imageFile != null ? 'Image selected' : (existingImageUrl.toString().isEmpty ? 'Upload Image' : 'Change Image')),
+                    ),
+                    if (existingImageUrl.toString().isNotEmpty && imageFile == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Image.network(existingImageUrl.toString(), width: 80, height: 80, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image)),
+                      ),
+                    const SizedBox(height: 12),
+                    TextField(controller: nameController, decoration: AdminTheme.inputDecoration(ctx, labelText: 'Category Name *')),
+                    const SizedBox(height: 12),
+                    TextField(controller: descController, decoration: AdminTheme.inputDecoration(ctx, labelText: 'Description *'), maxLines: 3),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              FilledButton(
+                style: AdminTheme.primaryButtonStyle,
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Category name is required')));
+                    return;
+                  }
+                  try {
+                    await _masterDataService.updateCategory(
+                      id: id,
+                      name: nameController.text.trim(),
+                      description: descController.text.trim().isEmpty ? null : descController.text.trim(),
+                      image: imageFile,
+                    );
+                    if (context.mounted) {
+                      Navigator.pop(ctx);
+                      _loadCategories();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Category updated')));
                     }
                   } catch (e) {
                     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));

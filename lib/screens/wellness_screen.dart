@@ -4,6 +4,7 @@ import 'package:Outbox/services/purchase_status_service.dart';
 import 'package:Outbox/services/review_service.dart';
 import 'package:Outbox/services/subscription_service.dart';
 import 'package:Outbox/services/master_data_service.dart';
+import 'package:Outbox/services/trainer_service.dart';
 import 'package:Outbox/widgets/review_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,10 +36,22 @@ class WellnessScreen extends StatefulWidget {
 class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObserver {
   int _refreshKey = 0; // Key to force stream refresh
   bool _hasInitialLoad = false;
+  final _searchController = TextEditingController();
   String _searchQuery = '';
-  String _trainerQuery = '';
+  String? _selectedTrainer; // Dropdown selection, like Fitness
   DateTime? _selectedDate;
-  
+  Future<bool>? _hasContentFuture;
+
+  Future<bool> _hasAnyContent() async {
+    try {
+      final memberships = await getWellnessMembershipsStream().first;
+      final classes = await fetchTodaysClasses(categoryFilter: 'wellness');
+      return memberships.isNotEmpty || classes.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void _refreshData() {
     if (mounted) {
       setState(() {
@@ -51,6 +64,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
+    _hasContentFuture = _hasAnyContent();
     WidgetsBinding.instance.addObserver(this);
     // Refresh data when screen first loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -63,6 +77,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _searchController.dispose();
     super.dispose();
   }
   
@@ -268,6 +283,21 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
     }
   }
 
+  /// Get all trainers for dropdown (same as Fitness page)
+  Future<List<String>> _getTrainers() async {
+    try {
+      final trainerService = TrainerService();
+      final trainers = await trainerService.getAllTrainers();
+      return trainers.map((trainer) {
+        final firstName = trainer['first_name'] ?? '';
+        final lastName = trainer['last_name'] ?? '';
+        return '$firstName $lastName'.trim();
+      }).where((name) => name.isNotEmpty).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
   // Session descriptions map
   static const Map<String, String> sessionDescriptions = {
     "OUTCALM": "OutCalm is a deeply relaxing meditation and sound bath session designed to soothe your mind and body. Gentle breathwork, calming soundscapes, and subtle aromatherapy help you unwind, reduce stress, and leave feeling refreshed.\n\nOutCalm is perfect for all levels and offered in 30 or 45-minute sessions.",
@@ -399,7 +429,38 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
 
     return Scaffold(
       backgroundColor: scaffoldBackground,
-      body: SingleChildScrollView(
+      body: FutureBuilder<bool>(
+        future: _hasContentFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.data != true) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.schedule, size: 64, color: accentColor.withOpacity(0.7)),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Coming soon',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: headlineColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Classes and memberships for this section will appear here.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(color: subTextColor, fontSize: 16),
+                  ),
+                ],
+              ),
+            );
+          }
+          return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           children: [
@@ -422,7 +483,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
 
             const SizedBox(height: 36),
 
-            /// SEARCH & FILTERS (by program/class name, trainer, and date)
+            /// SEARCH & FILTERS (program/class name, trainer dropdown, date picker)
             Container(
               decoration: BoxDecoration(
                 color: widget.isDarkMode ? Colors.grey[850] : Colors.white,
@@ -430,11 +491,14 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
               ),
               padding: const EdgeInsets.all(12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
                       Expanded(
+                        flex: 3,
                         child: TextField(
+                          controller: _searchController,
                           onChanged: (value) => setState(() => _searchQuery = value),
                           decoration: InputDecoration(
                             border: InputBorder.none,
@@ -448,6 +512,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Icon(Icons.search, color: accentColor),
                     ],
                   ),
@@ -456,20 +521,37 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
-                          onChanged: (value) => setState(() => _trainerQuery = value),
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Search by trainer name",
-                            hintStyle: GoogleFonts.inter(
-                              color: widget.isDarkMode ? Colors.white54 : Colors.grey,
-                            ),
-                          ),
-                          style: GoogleFonts.inter(
-                            color: widget.isDarkMode ? Colors.white : const Color(0xFF353535),
-                          ),
+                        child: FutureBuilder<List<String>>(
+                          future: _getTrainers(),
+                          builder: (context, snapshot) {
+                            final trainers = snapshot.data ?? [];
+                            final onSurface = widget.isDarkMode ? Colors.white : const Color(0xFF353535);
+                            return DropdownButton<String>(
+                              hint: Text(
+                                "Select Trainer",
+                                style: GoogleFonts.inter(color: onSurface),
+                              ),
+                              value: _selectedTrainer,
+                              isExpanded: true,
+                              dropdownColor: widget.isDarkMode ? Colors.grey[850] : Colors.white,
+                              style: GoogleFonts.inter(color: onSurface),
+                              items: trainers
+                                  .map((trainer) => DropdownMenuItem(
+                                        value: trainer,
+                                        child: Text(
+                                          trainer,
+                                          style: GoogleFonts.inter(color: onSurface),
+                                        ),
+                                      ))
+                                  .toList(),
+                              onChanged: (value) {
+                                setState(() => _selectedTrainer = value);
+                              },
+                            );
+                          },
                         ),
                       ),
+                      const SizedBox(width: 8),
                       InkWell(
                         onTap: () async {
                           final picked = await showDatePicker(
@@ -485,13 +567,14 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
                           }
                         },
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.calendar_today, color: accentColor, size: 20),
                             const SizedBox(width: 4),
                             Text(
                               _selectedDate == null
-                                  ? "Any date"
-                                  : "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}",
+                                  ? "Pick date"
+                                  : "${_selectedDate!.month}/${_selectedDate!.day}/${_selectedDate!.year}",
                               style: GoogleFonts.inter(
                                 color: widget.isDarkMode ? Colors.white : const Color(0xFF353535),
                               ),
@@ -500,6 +583,25 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                          _selectedTrainer = null;
+                          _selectedDate = null;
+                        });
+                      },
+                      icon: Icon(Icons.refresh, size: 18, color: accentColor),
+                      label: Text(
+                        'Reset filters',
+                        style: GoogleFonts.inter(color: accentColor, fontSize: 13),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -523,7 +625,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
               categoryFilter: 'wellness',
               selectedDate: _selectedDate,
               searchQuery: _searchQuery,
-              trainerQuery: _trainerQuery,
+              trainerQuery: _selectedTrainer ?? '',
             ),
 
             const SizedBox(height: 32),
@@ -564,12 +666,12 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
                 final allMemberships = snapshot.data!;
                 NotificationService.scheduleUpcomingSessions(allMemberships);
 
-                // Apply client-side filters: program/class name, trainer name, and selected date
+                // Apply client-side filters: program/class name, trainer (dropdown), and selected date
                 final filtered = allMemberships.where((card) {
                   final matchesName = _searchQuery.isEmpty ||
                       card.title.toLowerCase().contains(_searchQuery.toLowerCase());
-                  final matchesTrainer = _trainerQuery.isEmpty ||
-                      card.mentor.toLowerCase().contains(_trainerQuery.toLowerCase());
+                  final matchesTrainer = _selectedTrainer == null ||
+                      card.mentor == _selectedTrainer;
 
                   DateTime? cardDate;
                   try {
@@ -612,7 +714,7 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
             /// FIND YOUR NEW LATEST PACKAGES SECTION (filtered by date and search)
             MembershipCarousel(
               searchQuery: _searchQuery,
-              selectedTrainer: _trainerQuery.isEmpty ? null : _trainerQuery,
+              selectedTrainer: _selectedTrainer,
               filterFutureDate: false,
               isDarkMode: widget.isDarkMode,
               categoryFilter: 'wellness',
@@ -622,6 +724,8 @@ class _WellnessScreenState extends State<WellnessScreen> with WidgetsBindingObse
             const SizedBox(height: 32),
           ],
         ),
+      );
+    },
       ),
     );
   }

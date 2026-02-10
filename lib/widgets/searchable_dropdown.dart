@@ -89,110 +89,115 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
     final scheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: scheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.label,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: scheme.onSurface,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setDialogState) {
+          return Dialog(
+            backgroundColor: scheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.label,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: scheme.onSurface,
+                            ),
+                          ),
                         ),
-                      ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: scheme.onSurface),
+                          onPressed: () => Navigator.pop(dialogContext),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: Icon(Icons.close, color: scheme.onSurface),
-                      onPressed: () => Navigator.pop(dialogContext),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: scheme.outlineVariant),
-              // Search field
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search ${widget.label.toLowerCase()}...',
-                    prefixIcon: Icon(Icons.search, color: scheme.onSurfaceVariant),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: scheme.surfaceContainerHighest,
                   ),
-                  onChanged: _filterItems,
-                  autofocus: true,
-                ),
-              ),
-              // List of items
-              Flexible(
-                child: _filteredItems.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Text('No items found', style: TextStyle(color: scheme.onSurfaceVariant)),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _filteredItems.length,
-                        itemBuilder: (context, index) {
-                          if (index >= _filteredItems.length) {
-                            return const SizedBox.shrink();
-                          }
-                          try {
-                            final item = _filteredItems[index];
-                            if (item == null) {
-                              return const SizedBox.shrink();
-                            }
-                            final itemValue = widget.getValue(item);
-                            final isSelected = widget.value != null && widget.value == itemValue;
-
-                            return ListTile(
-                              title: Text(
-                                widget.displayText(item),
-                                style: TextStyle(fontSize: 16, color: scheme.onSurface),
-                              ),
-                              selected: isSelected,
-                              selectedTileColor: scheme.primaryContainer,
-                              leading: isSelected
-                                  ? Icon(Icons.check_circle, color: scheme.primary, size: 24)
-                                  : Icon(Icons.radio_button_unchecked, color: scheme.onSurfaceVariant, size: 24),
-                              onTap: () {
-                                final value = widget.getValue(item);
-                                if (value.isNotEmpty) {
-                                  widget.onChanged(value);
-                                  if (Navigator.canPop(context)) {
-                                    Navigator.pop(context);
-                                  }
-                                }
-                              },
-                            );
-                          } catch (e) {
-                            print('Error in searchable dropdown item: $e');
-                            return ListTile(
-                              title: Text('Error loading item', style: TextStyle(color: scheme.error)),
-                              enabled: false,
-                            );
-                          }
-                        },
+                  Divider(height: 1, color: scheme.outlineVariant),
+                  // Search field — filter and rebuild dialog so list updates
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search ${widget.label.toLowerCase()}...',
+                        prefixIcon: Icon(Icons.search, color: scheme.onSurfaceVariant),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: scheme.surfaceContainerHighest,
                       ),
+                      onChanged: (value) {
+                        _filterItems(value);
+                        setDialogState(() {});
+                      },
+                      autofocus: true,
+                    ),
+                  ),
+                  // List of items (reads current _filteredItems when dialog rebuilds)
+                  Flexible(
+                    child: _filteredItems.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Text('No items found', style: TextStyle(color: scheme.onSurfaceVariant)),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _filteredItems.length,
+                            itemBuilder: (listContext, index) {
+                              if (index >= _filteredItems.length) {
+                                return const SizedBox.shrink();
+                              }
+                              try {
+                                final item = _filteredItems[index];
+                                if (item == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                final itemValue = widget.getValue(item);
+                                final isSelected = widget.value != null && widget.value == itemValue;
+
+                                return ListTile(
+                                  title: Text(
+                                    widget.displayText(item),
+                                    style: TextStyle(fontSize: 16, color: scheme.onSurface),
+                                  ),
+                                  selected: isSelected,
+                                  selectedTileColor: scheme.primaryContainer,
+                                  leading: isSelected
+                                      ? Icon(Icons.check_circle, color: scheme.primary, size: 24)
+                                      : Icon(Icons.radio_button_unchecked, color: scheme.onSurfaceVariant, size: 24),
+                                  onTap: () {
+                                    final value = widget.getValue(item);
+                                    if (value.isNotEmpty) {
+                                      widget.onChanged(value);
+                                      Navigator.pop(dialogContext);
+                                    }
+                                  },
+                                );
+                              } catch (e) {
+                                print('Error in searchable dropdown item: $e');
+                                return ListTile(
+                                  title: Text('Error loading item', style: TextStyle(color: scheme.error)),
+                                  enabled: false,
+                                );
+                              }
+                            },
+                          ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

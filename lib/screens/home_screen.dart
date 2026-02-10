@@ -1,25 +1,120 @@
 import 'package:Outbox/screens/cart_screen.dart';
+import 'package:Outbox/screens/category_screen.dart';
 import 'package:Outbox/screens/fitness_screen.dart';
 import 'package:Outbox/screens/wellness_screen.dart';
 import 'package:flutter/material.dart';
-// import 'package:khyate_b2b/screens/cart_screen.dart';
-// import 'package:khyate_b2b/screens/fitness_screen.dart';
-// import 'package:khyate_b2b/screens/wellness_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../services/auth_service.dart';
+import '../services/master_data_service.dart';
 import '../widgets/app_shell.dart';
-import '../widgets/hero_section.dart';
 import '../widgets/section_card.dart';
-import 'coming_soon_screen.dart';
 import 'home/components/home_story_section.dart';
 import 'home/components/home_logo_story_section.dart';
 import 'home/components/home_values_section.dart';
 import 'home/components/home_community_section.dart';
 import 'login_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _masterDataService = MasterDataService();
+  List<Map<String, dynamic>> _categories = [];
+  List<AppShellPage> _pages = [];
+  Map<String, int> _categoryIdToTabIndex = {};
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategoriesAndBuildPages();
+  }
+
+  Future<void> _loadCategoriesAndBuildPages() async {
+    try {
+      final list = await _masterDataService.getAllCategories();
+      final categories = (list is List ? list : [])
+          .map((e) => e is Map ? Map<String, dynamic>.from(e as Map) : <String, dynamic>{})
+          .where((m) => (m['_id'] ?? m['id']) != null)
+          .toList();
+      if (!mounted) return;
+      _buildPagesFromCategories(categories);
+    } catch (e) {
+      if (mounted) _buildPagesFromCategories([]);
+    }
+  }
+
+  void _buildPagesFromCategories(List<Map<String, dynamic>> categories) {
+    final pages = <AppShellPage>[];
+    final categoryIdToTabIndex = <String, int>{};
+    final accentColor = const Color(0xFF20C8B1);
+
+    for (final cat in categories) {
+      final id = (cat['_id'] ?? cat['id'])?.toString() ?? '';
+      final name = (cat['cName'] ?? cat['name'] ?? 'Category').toString();
+      if (id.isEmpty) continue;
+      final nameLower = name.toLowerCase();
+      if (nameLower.contains('fitness') && !nameLower.contains('wellness')) {
+        pages.add(AppShellPage(
+          label: name,
+          icon: Icons.fitness_center,
+          builder: (ctx, isDarkMode) => FitnessScreen(isDarkMode: isDarkMode),
+        ));
+        categoryIdToTabIndex[id] = pages.length - 1;
+      } else if (nameLower.contains('wellness') && !nameLower.contains('fitness')) {
+        pages.add(AppShellPage(
+          label: name,
+          icon: Icons.spa,
+          builder: (ctx, isDarkMode) => WellnessScreen(isDarkMode: isDarkMode),
+        ));
+        categoryIdToTabIndex[id] = pages.length - 1;
+      } else {
+        pages.add(AppShellPage(
+          label: name,
+          icon: Icons.category,
+          builder: (ctx, isDarkMode) => CategoryScreen(
+            categoryId: id,
+            categoryName: name,
+            isDarkMode: isDarkMode,
+          ),
+        ));
+        categoryIdToTabIndex[id] = pages.length - 1;
+      }
+    }
+
+    if (pages.isEmpty) {
+      pages.addAll([
+        AppShellPage(
+          label: 'Fitness',
+          icon: Icons.fitness_center,
+          builder: (ctx, isDarkMode) => FitnessScreen(isDarkMode: isDarkMode),
+        ),
+        AppShellPage(
+          label: 'Wellness',
+          icon: Icons.spa,
+          builder: (ctx, isDarkMode) => WellnessScreen(isDarkMode: isDarkMode),
+        ),
+      ]);
+    }
+
+    pages.add(AppShellPage(
+      label: 'Cart',
+      icon: Icons.shopping_cart_checkout_rounded,
+      builder: (ctx, isDarkMode) => CartScreen(isDarkMode: isDarkMode),
+    ));
+
+    setState(() {
+      _categories = categories;
+      _pages = pages;
+      _categoryIdToTabIndex = categoryIdToTabIndex;
+      _loading = false;
+    });
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     await AuthService().signOut();
@@ -33,34 +128,147 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return AppShell(
       onLogout: () => _handleLogout(context),
-      landingBuilder: (ctx, isDarkMode) => _HomeLanding(isDarkMode: isDarkMode),
-      pages: [
-        AppShellPage(
-          label: 'Fitness',
-          icon: Icons.fitness_center,
-          builder: (ctx, isDarkMode) => FitnessScreen(isDarkMode: isDarkMode),
+      landingBuilder: (ctx, isDarkMode) => _HomeLanding(
+        isDarkMode: isDarkMode,
+        categories: _categories,
+        categoryIdToTabIndex: _categoryIdToTabIndex,
+      ),
+      pages: _pages,
+    );
+  }
+}
+
+/// Explore section: category cards from API or default Fitness/Wellness.
+class _ExploreSection extends StatelessWidget {
+  const _ExploreSection({
+    required this.isDarkMode,
+    required this.categories,
+    required this.categoryIdToTabIndex,
+  });
+
+  final bool isDarkMode;
+  final List<Map<String, dynamic>> categories;
+  final Map<String, int> categoryIdToTabIndex;
+
+  static const _gradients = [
+    (Color(0xFFFF6B6B), [Color(0xFFFF6B6B), Color(0xFFFF8E53)]),
+    (Color(0xFF26C485), [Color(0xFF26C485), Color(0xFF4ECDC4)]),
+    (Color(0xFFEC4899), [Color(0xFFEC4899), Color(0xFFA855F7)]),
+    (Color(0xFF3B82F6), [Color(0xFF3B82F6), Color(0xFF8B5CF6)]),
+    (Color(0xFFF59E0B), [Color(0xFFF59E0B), Color(0xFFEF4444)]),
+  ];
+  static const _icons = [
+    Icons.fitness_center_rounded,
+    Icons.spa_rounded,
+    Icons.category_rounded,
+    Icons.explore_rounded,
+    Icons.star_rounded,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (categories.isEmpty) {
+      return Row(
+        children: [
+          Expanded(
+            child: _QuickAccessCard(
+              icon: Icons.fitness_center_rounded,
+              title: 'Fitness',
+              subtitle: 'Dynamic Classes',
+              color: _gradients[0].$1,
+              gradient: _gradients[0].$2,
+              onTap: () => AppShell.navigateToTab(context, 0),
+              isDarkMode: isDarkMode,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _QuickAccessCard(
+              icon: Icons.spa_rounded,
+              title: 'Wellness',
+              subtitle: 'Mind & Body',
+              color: _gradients[1].$1,
+              gradient: _gradients[1].$2,
+              onTap: () => AppShell.navigateToTab(context, 1),
+              isDarkMode: isDarkMode,
+            ),
+          ),
+        ],
+      );
+    }
+    final list = <Widget>[];
+    for (var i = 0; i < categories.length; i++) {
+      final cat = categories[i];
+      final id = (cat['_id'] ?? cat['id'])?.toString() ?? '';
+      final name = (cat['cName'] ?? cat['name'] ?? 'Category').toString();
+      final tabIndex = categoryIdToTabIndex[id];
+      if (tabIndex == null) continue;
+      final idx = i % _gradients.length;
+      final (color, gradient) = _gradients[idx];
+      final icon = _icons[idx % _icons.length];
+      list.add(
+        Expanded(
+          child: _QuickAccessCard(
+            icon: icon,
+            title: name,
+            subtitle: 'Explore',
+            color: color,
+            gradient: gradient,
+            onTap: () => AppShell.navigateToTab(context, tabIndex),
+            isDarkMode: isDarkMode,
+          ),
         ),
-          AppShellPage(
-    label: 'Wellness',
-    icon: Icons.spa,
-    builder: (ctx, isDarkMode) => WellnessScreen(isDarkMode: isDarkMode),
-  ),
-        AppShellPage(
-          label: 'Cart',
-          icon: Icons.shopping_cart_checkout_rounded,
-         builder: (ctx,  isDarkMode) => CartScreen(isDarkMode: isDarkMode),
-        ),
-      ],
+      );
+      if (i < categories.length - 1 && list.length.isOdd) list.add(const SizedBox(width: 12));
+    }
+    if (list.length == 1) {
+      return Row(children: list);
+    }
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: List.generate(categories.length, (i) {
+        final cat = categories[i];
+        final id = (cat['_id'] ?? cat['id'])?.toString() ?? '';
+        final name = (cat['cName'] ?? cat['name'] ?? 'Category').toString();
+        final tabIndex = categoryIdToTabIndex[id];
+        if (tabIndex == null) return const SizedBox.shrink();
+        final idx = i % _gradients.length;
+        final (color, gradient) = _gradients[idx];
+        return SizedBox(
+          width: (MediaQuery.of(context).size.width - 48 - 12) / 2,
+          child: _QuickAccessCard(
+            icon: _icons[idx % _icons.length],
+            title: name,
+            subtitle: 'Explore',
+            color: color,
+            gradient: gradient,
+            onTap: () => AppShell.navigateToTab(context, tabIndex),
+            isDarkMode: isDarkMode,
+          ),
+        );
+      }),
     );
   }
 }
 
 class _HomeLanding extends StatelessWidget {
-  const _HomeLanding({required this.isDarkMode});
+  const _HomeLanding({
+    required this.isDarkMode,
+    required this.categories,
+    required this.categoryIdToTabIndex,
+  });
 
   final bool isDarkMode;
+  final List<Map<String, dynamic>> categories;
+  final Map<String, int> categoryIdToTabIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +334,7 @@ class _HomeLanding extends StatelessWidget {
               ),
             ),
 
-            // Quick Access Cards
+            // Quick Access Cards — from categories (or default Fitness/Wellness if none)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
@@ -141,73 +349,10 @@ class _HomeLanding extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _QuickAccessCard(
-                          icon: Icons.fitness_center_rounded,
-                          title: 'Fitness',
-                          subtitle: 'Dynamic Classes',
-                          color: const Color(0xFFFF6B6B),
-                          gradient: const [
-                            Color(0xFFFF6B6B),
-                            Color(0xFFFF8E53),
-                          ],
-                          onTap: () {
-                            AppShell.navigateToTab(context, 0);
-                          },
-                          isDarkMode: isDarkMode,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _QuickAccessCard(
-                          icon: Icons.spa_rounded,
-                          title: 'Wellness',
-                          subtitle: 'Mind & Body',
-                          color: const Color(0xFF26C485),
-                          gradient: const [
-                            Color(0xFF26C485),
-                            Color(0xFF4ECDC4),
-                          ],
-                          onTap: () {
-                            AppShell.navigateToTab(context, 1);
-                          },
-                          isDarkMode: isDarkMode,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _QuickAccessCard(
-                    icon: Icons.favorite_rounded,
-                    title: 'Liveness',
-                    subtitle: 'Community & Events',
-                    color: const Color(0xFFEC4899),
-                    gradient: const [
-                      Color(0xFFEC4899),
-                      Color(0xFFA855F7),
-                    ],
-                    onTap: () {
-                      final bool isAdmin = AppShell.isAdmin(context);
-                      final bool darkMode = AppShell.isDarkMode(context);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ComingSoonScreen(
-                            isDarkMode: darkMode,
-                            isAdmin: isAdmin,
-                            onLogout: () => AppShell.showLogoutDialog(context),
-                            onToggleTheme: () => AppShell.toggleTheme(context),
-                            onShowAdminOptions: () =>
-                                AppShell.showAdminOptions(context),
-                            onOpenProfile: () =>
-                                AppShell.openProfileOrAdmin(context),
-                          ),
-                        ),
-                      );
-                    },
+                  _ExploreSection(
                     isDarkMode: isDarkMode,
-                    isFullWidth: true,
+                    categories: categories,
+                    categoryIdToTabIndex: categoryIdToTabIndex,
                   ),
                 ],
               ),
@@ -215,7 +360,7 @@ class _HomeLanding extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Our Values Section (Condensed App Version)
+            // Our Values Section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(

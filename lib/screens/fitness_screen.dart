@@ -26,10 +26,28 @@ class FitnessScreen extends StatefulWidget {
 }
 
 class _FitnessScreenState extends State<FitnessScreen> {
+  final _searchController = TextEditingController();
   String searchQuery = '';
   String? selectedTrainer;
   bool filterFutureDate = false;
   DateTime? selectedDate;
+  Future<bool>? _hasContentFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasContentFuture = _hasAnyContent();
+  }
+
+  Future<bool> _hasAnyContent() async {
+    try {
+      final memberships = await getMembershipsStream().first;
+      final classes = await fetchTodaysClasses(categoryFilter: 'fitness');
+      return memberships.isNotEmpty || classes.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Session descriptions map
   static const Map<String, String> sessionDescriptions = {
@@ -52,6 +70,12 @@ class _FitnessScreenState extends State<FitnessScreen> {
     "OUTMOVE": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=400&fit=crop&q=80",
     "OUTCORE": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=400&fit=crop&q=80",
   };
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   /// Get all trainers from your API
   Future<List<String>> getTrainers() async {
@@ -335,8 +359,39 @@ class _FitnessScreenState extends State<FitnessScreen> {
 
     return Scaffold(
       backgroundColor: scaffoldBackground,
-      body: SingleChildScrollView(
-  padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
+      body: FutureBuilder<bool>(
+        future: _hasContentFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.data != true) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.schedule, size: 64, color: accentColor.withOpacity(0.7)),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Coming soon',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: headlineColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Classes and memberships for this section will appear here.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(color: subTextColor, fontSize: 16),
+                  ),
+                ],
+              ),
+            );
+          }
+          return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
 
         child: Column(
           children: [
@@ -368,6 +423,7 @@ class _FitnessScreenState extends State<FitnessScreen> {
                       Expanded(
                         flex: 3,
                         child: TextField(
+                          controller: _searchController,
                           onChanged: (value) => setState(() => searchQuery = value),
                           decoration: InputDecoration(
                             border: InputBorder.none,
@@ -462,6 +518,26 @@ class _FitnessScreenState extends State<FitnessScreen> {
                         style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          searchQuery = '';
+                          selectedTrainer = null;
+                          selectedDate = null;
+                          filterFutureDate = false;
+                        });
+                      },
+                      icon: Icon(Icons.refresh, size: 18, color: accentColor),
+                      label: Text(
+                        'Reset filters',
+                        style: GoogleFonts.inter(color: accentColor, fontSize: 13),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -568,6 +644,8 @@ TodaysClassesList(
             const SizedBox(height: 32),
           ],
         ),
+      );
+    },
       ),
     );
   }

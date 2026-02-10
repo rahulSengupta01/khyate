@@ -126,8 +126,23 @@ class _CustomersSectionState extends State<CustomersSection> {
   /// GET /user/get-userby-id/:id — show single customer details
   Future<void> _showCustomerDetail(String id) async {
     try {
-      final user = await _userService.getUserById(id);
-      if (!mounted || user == null) return;
+      final raw = await _userService.getUserById(id);
+      if (!mounted || raw == null) return;
+      // Support nested user (e.g. API returns { user: { ... } }) and both camelCase/snake_case
+      final user = (raw['user'] ?? raw['data'] ?? raw) is Map
+          ? Map<String, dynamic>.from((raw['user'] ?? raw['data'] ?? raw) as Map)
+          : raw;
+      final name = '${user['firstName'] ?? user['first_name'] ?? ''} ${user['lastName'] ?? user['last_name'] ?? ''}'.trim();
+      final displayName = name.isEmpty ? (user['name']?.toString() ?? '') : name;
+      final email = user['email']?.toString() ?? '';
+      final phone = user['phoneNumber'] ?? user['phone_number']?.toString() ?? '';
+      final age = user['age']?.toString() ?? '';
+      final gender = user['gender']?.toString() ?? '';
+      final address = user['address']?.toString() ?? '';
+      final isActive = user['isActive'] ?? user['is_active'];
+      final status = isActive == true ? 'Active' : 'Inactive';
+      final birthday = user['dateOfBirth'] ?? user['date_of_birth'] ?? user['birthday']?.toString() ?? '';
+      if (!mounted) return;
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -137,13 +152,14 @@ class _CustomersSectionState extends State<CustomersSection> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _detailRow('Name', '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim()),
-                _detailRow('Email', user['email']?.toString() ?? ''),
-                _detailRow('Phone', user['phoneNumber'] ?? user['phone_number']?.toString() ?? ''),
-                _detailRow('Age', user['age']?.toString() ?? ''),
-                _detailRow('Gender', user['gender']?.toString() ?? ''),
-                _detailRow('Address', user['address']?.toString() ?? ''),
-                _detailRow('Status', (user['isActive'] ?? user['is_active']) == true ? 'Active' : 'Inactive'),
+                _detailRow('Name', displayName),
+                _detailRow('Email', email),
+                _detailRow('Phone', phone),
+                _detailRow('Age', age),
+                _detailRow('Gender', gender),
+                _detailRow('Address', address),
+                if (birthday.isNotEmpty) _detailRow('Birthday', birthday),
+                _detailRow('Status', status),
               ],
             ),
           ),
@@ -240,7 +256,7 @@ class _CustomersSectionState extends State<CustomersSection> {
                   )
                 : AdminSimpleTable(
                     columnLabels: const [
-                      'S.No', 'Name', 'Email', 'Age', 'Gender', 'Location', 'Address', 'Contact No', 'Birthday', 'Status', 'Actions',
+                      'S.No', 'Name', 'Email', 'Age', 'Gender', 'Location', 'Address', 'Contact No', 'Birthday', 'Status', 'View',
                     ],
                     rows: _customers.asMap().entries.map((e) {
                       final i = e.key + 1;
@@ -256,19 +272,13 @@ class _CustomersSectionState extends State<CustomersSection> {
                         Text((c['contact'] ?? '').toString()),
                         Text((c['birthday'] ?? '').toString()),
                         _statusChip((c['status'] ?? 'Active').toString()),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.visibility, size: 20),
-                              onPressed: () {
-                                final id = (c['id'] ?? c['_id'] ?? '').toString();
-                                if (id.isNotEmpty) _showCustomerDetail(id);
-                              },
-                            ),
-                            IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () {}),
-                            IconButton(icon: const Icon(Icons.delete, size: 20), onPressed: () {}),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.visibility, size: 20),
+                          onPressed: () {
+                            final id = (c['id'] ?? c['_id'] ?? '').toString();
+                            if (id.isNotEmpty) _showCustomerDetail(id);
+                          },
+                          tooltip: 'View details',
                         ),
                       ];
                     }).toList(),

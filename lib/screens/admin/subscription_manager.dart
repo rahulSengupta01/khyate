@@ -36,9 +36,13 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
   String? _selectedSessionTypeId;
   String? _selectedAddressId; // LocationMaster ID
   List<String> _selectedDates = [];
+  DateTime? _rangeStartDate;
+  DateTime? _rangeEndDate;
   bool _isActive = true;
   bool _isSingleClass = false;
-  
+  /// When non-null, form is in edit mode and pre-filled with this subscription.
+  Map<String, dynamic>? _editingSubscription;
+
   List<dynamic> _categories = [];
   List<dynamic> _trainers = [];
   List<dynamic> _sessions = [];
@@ -153,7 +157,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading subscriptions: ${e.toString()}')),
+          SnackBar(content: Text('Error loading subscriptions: ${_errorMessage(e)}')),
         );
       }
     }
@@ -196,162 +200,164 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
     }
   }
 
-  Future<void> _showEditDialog(Map<String, dynamic> subscription) async {
-    final editNameController = TextEditingController(text: subscription['name'] ?? '');
-    final editPriceController = TextEditingController(text: subscription['price']?.toString() ?? '');
-    final editDescriptionController = TextEditingController(text: subscription['description'] ?? '');
-    File? editMedia;
-    String? editMediaUrl = subscription['media'] ?? subscription['mediaUrl'];
+  /// Clean exception message for SnackBar: strip "Exception: " and wrapper text so backend message is visible.
+  static String _errorMessage(dynamic e) {
+    String msg = e.toString().trim();
+    if (msg.startsWith('Exception: ')) msg = msg.substring(11).trim();
+    const prefixes = [
+      'Update subscription error: ',
+      'Create subscription error: ',
+      'Delete subscription error: ',
+      'Get all subscriptions error: ',
+    ];
+    for (final p in prefixes) {
+      if (msg.startsWith(p)) {
+        msg = msg.substring(p.length).trim();
+        break;
+      }
+    }
+    return msg.isEmpty ? 'Something went wrong' : msg;
+  }
 
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Edit Subscription'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: () async {
-                    final picker = ImagePicker();
-                    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                    if (pickedFile != null) {
-                      setDialogState(() {
-                        editMedia = File(pickedFile.path);
-                        editMediaUrl = null;
-                      });
-                    }
-                  },
-                  child: Container(
-                    height: 150,
-                    width: double.infinity,
-                    decoration: AdminTheme.uploadSectionDecoration(context),
-                    child: editMedia != null
-                        ? Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.file(editMedia!, fit: BoxFit.cover),
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Material(
-                                  color: AdminTheme.editOverlayColor(context),
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-                                    onPressed: () async {
-                                      final picker = ImagePicker();
-                                      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                                      if (pickedFile != null) {
-                                        setDialogState(() {
-                                          editMedia = File(pickedFile.path);
-                                          editMediaUrl = null;
-                                        });
-                                      }
-                                    },
-                                    padding: const EdgeInsets.all(6),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : editMediaUrl != null
-                            ? Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  Image.network(editMediaUrl!, fit: BoxFit.cover),
-                                  Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: Material(
-                                      color: AdminTheme.editOverlayColor(context),
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: IconButton(
-                                        icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-                                        onPressed: () async {
-                                          final picker = ImagePicker();
-                                          final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                                          if (pickedFile != null) {
-                                            setDialogState(() {
-                                              editMedia = File(pickedFile.path);
-                                              editMediaUrl = null;
-                                            });
-                                          }
-                                        },
-                                        padding: const EdgeInsets.all(6),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
-                                  const SizedBox(height: 8),
-                                  Text('Tap to select media', style: TextStyle(color: AdminTheme.fieldTextMuted(context))),
-                                ],
-                              ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: editNameController,
-                  decoration: AdminTheme.inputDecoration(context, labelText: 'Name'),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: editPriceController,
-                  decoration: AdminTheme.inputDecoration(context, labelText: 'Price'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: editDescriptionController,
-                  decoration: AdminTheme.inputDecoration(context, labelText: 'Description'),
-                  maxLines: 3,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: AdminTheme.primaryButtonStyle,
-              onPressed: () async {
-                try {
-                  await _subscriptionService.updateSubscription(
-                    subscriptionId: subscription['_id'] ?? subscription['id'] ?? '',
-                    media: editMedia,
-                    name: editNameController.text.isEmpty ? null : editNameController.text,
-                    price: editPriceController.text.isEmpty ? null : double.tryParse(editPriceController.text),
-                    description: editDescriptionController.text.isEmpty ? null : editDescriptionController.text,
-                  );
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Subscription updated successfully')),
-                    );
-                    _loadSubscriptions();
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${e.toString()}')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Update'),
-            ),
-          ],
-        ),
-      ),
-    );
+  /// Resolve subscription ID from API response (supports _id, id, subscriptionId, nested data).
+  static String _getSubscriptionId(dynamic subscription) {
+    if (subscription == null) return '';
+    if (subscription is Map) {
+      final map = Map<String, dynamic>.from(subscription);
+      final id = map['_id'] ?? map['id'] ?? map['subscriptionId'];
+      if (id != null && id.toString().trim().isNotEmpty) return id.toString().trim();
+      final data = map['data'];
+      if (data is Map) {
+        final dataMap = Map<String, dynamic>.from(data);
+        final dataId = dataMap['_id'] ?? dataMap['id'];
+        if (dataId != null && dataId.toString().trim().isNotEmpty) return dataId.toString().trim();
+      }
+    }
+    return '';
+  }
+
+  /// Get id from a subscription field that may be an object (with _id) or a string.
+  static String? _getIdFromField(dynamic value) {
+    if (value == null) return null;
+    if (value is Map) {
+      final id = value['_id'] ?? value['id'];
+      return id?.toString().trim();
+    }
+    final s = value.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  /// Populate the create form with subscription data so the same form is used for editing.
+  void _populateFormFromSubscription(Map<String, dynamic> subscription) {
+    _nameController.text = subscription['name']?.toString() ?? '';
+    _priceController.text = subscription['price']?.toString() ?? '';
+    _descriptionController.text = subscription['description']?.toString() ?? '';
+    _selectedCategoryId = _getIdFromField(subscription['categoryId']) ?? subscription['categoryId']?.toString();
+    _selectedTrainerId = _getIdFromField(subscription['trainer']);
+    _selectedSessionTypeId = _getIdFromField(subscription['sessionType']);
+    _selectedAddressId = _getIdFromField(subscription['Address']) ?? _getIdFromField(subscription['addressId']);
+    _startTimeController.text = subscription['startTime']?.toString() ?? '';
+    _endTimeController.text = subscription['endTime']?.toString() ?? '';
+    _isActive = subscription['isActive'] != false;
+    _isSingleClass = subscription['isSingleClass'] == true;
+    final dateList = subscription['date'];
+    if (dateList is List) {
+      _selectedDates = dateList.map((e) => e?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+      _selectedDates.sort();
+    } else {
+      _selectedDates = [];
+    }
+    _selectedMedia = null; // keep existing image shown via URL in UI when editing
+    _rangeStartDate = null;
+    _rangeEndDate = null;
+    if (_selectedCategoryId != null) {
+      _masterDataService.getSessionsByCategoryId(_selectedCategoryId!).then((sessions) {
+        if (mounted) setState(() => _sessions = sessions);
+      });
+    }
+  }
+
+  void _clearForm() {
+    _nameController.clear();
+    _priceController.clear();
+    _descriptionController.clear();
+    _startTimeController.clear();
+    _endTimeController.clear();
+    setState(() {
+      _selectedMedia = null;
+      _selectedCategoryId = null;
+      _selectedTrainerId = null;
+      _selectedSessionTypeId = null;
+      _selectedAddressId = null;
+      _selectedDates = [];
+      _editingSubscription = null;
+      _rangeStartDate = null;
+      _rangeEndDate = null;
+    });
+  }
+
+  Future<void> _updateSubscriptionFromForm() async {
+    final sub = _editingSubscription;
+    if (sub == null) return;
+    final subscriptionId = _getSubscriptionId(sub);
+    if (subscriptionId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot update: subscription ID not found')),
+      );
+      return;
+    }
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name is required')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await _subscriptionService.updateSubscription(
+        subscriptionId: subscriptionId,
+        media: _selectedMedia,
+        name: _nameController.text.trim(),
+        price: double.tryParse(_priceController.text) ?? double.tryParse(sub['price']?.toString() ?? '') ?? 0,
+        description: _descriptionController.text.trim(),
+        categoryId: _selectedCategoryId,
+        trainer: _selectedTrainerId,
+        sessionType: _selectedSessionTypeId,
+        date: _selectedDates.isEmpty ? null : _selectedDates,
+        startTime: _startTimeController.text.trim().isEmpty ? null : _startTimeController.text.trim(),
+        endTime: _endTimeController.text.trim().isEmpty ? null : _endTimeController.text.trim(),
+        addressId: _selectedAddressId,
+        isActive: _isActive,
+        isSingleClass: _isSingleClass,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Subscription updated successfully')),
+        );
+        _clearForm();
+        _loadSubscriptions();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating: ${_errorMessage(e)}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Opens the same form as create, pre-filled with subscription data (edit mode).
+  void _showEditDialog(Map<String, dynamic> subscription) {
+    if (_getSubscriptionId(subscription).isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot edit: subscription ID not found')),
+      );
+      return;
+    }
+    _populateFormFromSubscription(subscription);
+    setState(() => _editingSubscription = subscription);
   }
 
   Future<void> _deleteSubscription(Map<String, dynamic> subscription) async {
@@ -378,8 +384,16 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       if (!mounted) return;
       setState(() => _isLoading = true);
       try {
+        final id = _getSubscriptionId(subscription);
+        if (id.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cannot delete: subscription ID not found')),
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
         await _subscriptionService.deleteSubscription(
-          subscriptionId: subscription['_id'] ?? subscription['id'] ?? '',
+          subscriptionId: id,
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -391,7 +405,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting subscription: ${e.toString()}')),
+            SnackBar(content: Text('Error deleting subscription: ${_errorMessage(e)}')),
           );
         }
       }
@@ -414,7 +428,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       return;
     }
 
-    // Validate dates: 1 date for single class, 2 dates for multi-class
+    // Validate dates: single class = exactly 1 date; multi-day = at least 2 dates (start and end range)
     if (_isSingleClass && _selectedDates.length != 1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Single class must have exactly one date')),
@@ -422,9 +436,9 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
       return;
     }
 
-    if (!_isSingleClass && _selectedDates.length != 2) {
+    if (!_isSingleClass && _selectedDates.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Multi-class must have exactly two dates (start and end)')),
+        const SnackBar(content: Text('Multi-day event needs at least two dates (e.g. start and end)')),
       );
       return;
     }
@@ -474,7 +488,7 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating subscription: ${e.toString()}')),
+          SnackBar(content: Text('Error creating subscription: ${_errorMessage(e)}')),
         );
       }
     } finally {
@@ -514,21 +528,31 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
+                              _editingSubscription == null
+                                  ? 'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}'
+                                  : 'Edit ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
                               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              widget.title == 'Programs'
-                                  ? 'Add a new program'
-                                  : widget.title == 'Classes'
-                                      ? 'Add a new class'
-                                      : 'Add a new course or class',
+                              _editingSubscription == null
+                                  ? (widget.title == 'Programs'
+                                      ? 'Add a new program'
+                                      : widget.title == 'Classes'
+                                          ? 'Add a new class'
+                                          : 'Add a new course or class')
+                                  : 'Update details below',
                               style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                             ),
                           ],
                         ),
                       ),
+                      if (_editingSubscription != null)
+                        TextButton.icon(
+                          onPressed: () => setState(() => _clearForm()),
+                          icon: const Icon(Icons.close, size: 20),
+                          label: const Text('Cancel'),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -563,17 +587,45 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                                 ),
                               ],
                             )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Tap to select media',
-                                  style: TextStyle(fontSize: 16, color: AdminTheme.fieldTextMuted(context)),
+                          : (_editingSubscription != null &&
+                                  (_editingSubscription!['media'] != null || _editingSubscription!['mediaUrl'] != null))
+                              ? Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Image.network(
+                                        _editingSubscription!['media']?.toString() ?? _editingSubscription!['mediaUrl']?.toString() ?? '',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Material(
+                                        color: AdminTheme.editOverlayColor(context),
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: IconButton(
+                                          icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                                          onPressed: _pickMedia,
+                                          padding: const EdgeInsets.all(6),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_photo_alternate, size: 48, color: AdminTheme.fieldTextMuted(context)),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Tap to select media',
+                                      style: TextStyle(fontSize: 16, color: AdminTheme.fieldTextMuted(context)),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -810,16 +862,20 @@ class _SubscriptionManagerState extends State<SubscriptionManager> {
                     width: double.infinity,
                     height: 50,
                     child: FilledButton.icon(
-                      onPressed: _isLoading ? null : _createSubscription,
+                      onPressed: _isLoading
+                          ? null
+                          : (_editingSubscription != null ? _updateSubscriptionFromForm : _createSubscription),
                       icon: _isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Icon(Icons.add_circle, size: 20),
+                          : Icon(_editingSubscription != null ? Icons.save : Icons.add_circle, size: 20),
                       label: Text(
-                        _isLoading ? 'Creating...' : 'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}',
+                        _isLoading
+                            ? (_editingSubscription != null ? 'Updating...' : 'Creating...')
+                            : (_editingSubscription != null ? 'Update ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}' : 'Create ${widget.title == 'Subscriptions' ? 'Subscription' : widget.title}'),
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       style: AdminTheme.primaryButtonStyle,
