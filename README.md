@@ -5,6 +5,7 @@
 Khyate B2B provides an end-to-end platform for managing service bookings, trainers, subscriptions, packages, payments, availability, promotions, reviews, and operational master data.
 
 ---
+## Demo-> https://drive.google.com/file/d/1VN0tlA-JZwLsXswstt2G8UEV8nWjnyK8/view?usp=sharing
 
 ## Features
 
